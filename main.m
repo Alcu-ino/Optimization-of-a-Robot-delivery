@@ -12,7 +12,7 @@ archi = [
     struct('nome',"OB",'costo',45,'energia',[30 33 26],'tempoPercorrenza',[3 4 3]);
     struct('nome',"BO",'costo',45,'energia',[30 33 26],'tempoPercorrenza',[3 4 3]);
     struct('nome',"BA",'costo',57,'energia',[35 40 30],'tempoPercorrenza',[4 10 4]);
-    struct('nome',"BA",'costo',57,'energia',[35 40 30],'tempoPercorrenza',[4 10 4]);
+    struct('nome',"AB",'costo',57,'energia',[35 40 30],'tempoPercorrenza',[4 10 4]);
 ];
 
 %ENERGIA IN PERCENTUALE DELLA BATTERIA, TEMPO IN N SLOT DA 15 MINUTI
@@ -32,3 +32,95 @@ disp(V)
 %%%%%%%%%%%%%%%%%%%%%% COSTRUZIONE TEN %%%%%%%%%%%%%%%%%%%%%
 A = ArchiSpaceTime(V,archi);
 disp(A)
+
+%%%%%%%%%%%%%%%%%%%%%% AMPL %%%%%%%%%%%%%%%%%%%%%
+
+ampl = com.ampl.AMPL(com.ampl.Environment('/home/vito/Scrivania/ampl'));
+ampl.reset();
+ampl.read('Ampl_Main.mod');
+
+num_archi = length(A);
+%OPEN FILE
+dat_file = fullfile(pwd, 'archi_temp.dat');
+fid = fopen(dat_file, 'w');
+fprintf(fid, 'data;\n\n');
+
+num_archi = length(A);
+
+da_c       = cell(num_archi, 1);
+a_c        = cell(num_archi, 1);
+costo_v    = zeros(num_archi, 1);
+energ_v    = zeros(num_archi, 1);
+tempo_v    = zeros(num_archi, 1);
+partenza_c = cell(num_archi, 1);
+arrivo_c   = cell(num_archi, 1);
+
+for i = 1:num_archi
+    s             = A{i};
+    da_c{i}       = char(s.da_nodo);
+    a_c{i}        = char(s.a_nodo);
+    costo_v(i)    = double(s.costo);
+    energ_v(i)    = double(s.energia);
+    tempo_v(i)    = double(s.tempoPercorrenza);
+    partenza_c{i} = char(s.nome_nodo_partenza);
+    arrivo_c{i}   = char(s.nome_nodo_arrivo);
+end
+
+% Verifica — deve stampare valori reali, non 0 o vuoto
+fprintf('Arco 1: %s -> %s | costo=%g | energia=%g | nodo_p=%s\n', ...
+        da_c{1}, a_c{1}, costo_v(1), energ_v(1), partenza_c{1});
+
+% ── Set V ──────────────────────────────────────────
+fprintf(fid, 'set V :=');
+for i = 1:length(V)
+    fprintf(fid, ' %s', char(V(i)));
+end
+fprintf(fid, ';\n\n');
+
+% ── Set C ──────────────────────────────────────────
+fprintf(fid, 'set C := A B;\n\n');
+
+% ── Set A (archi spazio-temporali) ─────────────────
+fprintf(fid, 'set A :=\n');
+for i = 1:num_archi
+    fprintf(fid, '  (%s, %s)\n', da_c{i}, a_c{i});
+end
+fprintf(fid, ';\n\n');
+
+% ── Parametri numerici ─────────────────────────────
+params = {'costo', 'energia', 'tempoPercorrenza'};
+vals   = {costo_v, energ_v, tempo_v};
+for p = 1:3
+    fprintf(fid, 'param %s :=\n', params{p});
+    for i = 1:num_archi
+        fprintf(fid, '  %s %s %g\n', da_c{i}, a_c{i}, vals{p}(i));
+    end
+    fprintf(fid, ';\n\n');
+end
+
+% ── Parametri simbolici ────────────────────────────
+params_sym = {'nome_nodo_partenza', 'nome_nodo_arrivo'};
+vals_sym   = {partenza_c, arrivo_c};
+for p = 1:2
+    fprintf(fid, 'param %s :=\n', params_sym{p});
+    for i = 1:num_archi
+        fprintf(fid, '  %s %s %s\n', da_c{i}, a_c{i}, vals_sym{p}{i});
+    end
+    fprintf(fid, ';\n\n');
+end
+
+% ── Parametri scalari ──────────────────────────────
+fprintf(fid, 'param nodoPartenza := O0;\n');
+fprintf(fid, 'param nodoArrivo   := O47;\n');
+fprintf(fid, 'param cap_batteria := 100;\n');
+
+fclose(fid);
+
+% ── SOLUZIONE ─────────────────────────────
+ampl.readData(dat_file);
+ampl.setOption('solver', 'cplex'); 
+ampl.solve();
+
+%x = ampl.getVariable('x');
+%df = x.getValues();
+%disp(df);

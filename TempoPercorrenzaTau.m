@@ -14,8 +14,8 @@ if isstruct(archi) && ~isempty(archi)
 		for k = 1:length(archi)
 			nome_k = string(archi(k).nome);
 			if nome_k == key
-				if isfield(archiOrTAU(k),'tempoPercorrenza')
-					vec = archiOrTAU(k).tempoPercorrenza;
+				if isfield(archi(k),'tempoPercorrenza')
+					vec = archi(k).tempoPercorrenza;
 				else
 					error('TempoPercorrenzaTau:MissingField', ...
 						'Arco trovato ma non contiene un campo di tempo percorrenza.');
