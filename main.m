@@ -39,7 +39,6 @@ ampl = com.ampl.AMPL(com.ampl.Environment('/home/vito/Scrivania/ampl'));
 ampl.reset();
 ampl.read('Ampl_Main.mod');
 
-num_archi = length(A);
 %OPEN FILE
 dat_file = fullfile(pwd, 'archi_temp.dat');
 fid = fopen(dat_file, 'w');
