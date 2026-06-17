@@ -169,3 +169,8 @@ risultato = table(index0_filtrato, index1_filtrato, valori_filtrati, ...
 disp(risultato);
 D = digraph(index0_filtrato, index1_filtrato);
 plot(D);
+% ── RESTITUISCI SOC ─────────────────────────────
+soc = ampl.getVariable('soc');
+socM = x.getValues();
+valori_soc = socM.getColumnAsDoubles();
+disp(valori_soc);
