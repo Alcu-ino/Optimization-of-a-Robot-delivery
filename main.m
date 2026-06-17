@@ -4,6 +4,8 @@
 pesiPacchi= [20 30 40]; %peso in kg dei pacchi
 
 nodi = ['O';'B';'A'];
+clienti = ['A'];
+clienti_cell = cellstr(clienti);
 %%%%%%%%%%%%%%%%%%%%% ARCHI E PROPRIETA' %%%%%%%%%%%%%%%%%%%%%
 
 archi = [
@@ -20,7 +22,7 @@ archi = [
 
 %%%%%%%%%%%%%%%%%%%%% TEMPI E NODI %%%%%%%%%%%%%%%%%%%%%
 orario_apertura = {[0 12*4];[2*4 12*4];[11*4 12*4]}; %orari in slot da 15 minuti (orario 8-20)
-timeWindow = {[7*4 9*4];[2*4 3*4];[11*4 12*4]}; %tempi in slot da 15 minuti (orario 8-20)
+timeWindow = {[0 12*4];[0 12*4];[11*4 12*4]}; %tempi in slot da 15 minuti (orario 8-20)
 nodi_timeWindow = dictionary(nodi, timeWindow);
 nodi_orario_apertura = dictionary(nodi, orario_apertura);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -79,7 +81,11 @@ end
 fprintf(fid, ';\n\n');
 
 % ── Set C ──────────────────────────────────────────
-fprintf(fid, 'set C := A B;\n\n');
+fprintf(fid, 'set C :=');
+for i = 1:numel(clienti_cell)
+    fprintf(fid, ' %s', clienti_cell{i});
+end
+fprintf(fid, ';\n\n');
 
 % ── Set A (archi spazio-temporali) ─────────────────
 fprintf(fid, 'set A :=\n');
@@ -112,21 +118,19 @@ end
 
 % ── ORARIO MINIMO VOGLIO CONSEGNA(VETTORE STARTLINE->timeWindow) ────────────────────────────
 fprintf(fid, 'param startline :=\n');
-for i = 1:numel(clienti)
-    w = nodi_timeWindow(clienti{i});
-    fprintf(fid, '  %s %g\n', clienti{i}, w{1}(1));
+for i = 1:numel(clienti_cell)
+    w = nodi_timeWindow(clienti_cell{i});
+    fprintf(fid, '  %s %g\n', clienti_cell{i}, w{1}(1));
 end
 fprintf(fid, ';\n\n');
 
 % ── ORARIO MASSIMO VOGLIO CONSEGNA(VETTORE DEADLINE->timeWindow) ────────────────────────────
 fprintf(fid, 'param deadline :=\n');
-for i = 1:numel(clienti)
-    w = nodi_timeWindow(clienti{i});
-    fprintf(fid, '  %s %g\n', clienti{i}, w{1}(2));
+for i = 1:numel(clienti_cell)
+    w = nodi_timeWindow(clienti_cell{i});
+    fprintf(fid, '  %s %g\n', clienti_cell{i}, w{1}(2));
 end
 fprintf(fid, ';\n\n');
-
-% ── TEMPO DI ARRIVO AL NODO ────────────────────────────
 
 % ── Parametri scalari ──────────────────────────────
 fprintf(fid, 'param nodoPartenza := O0;\n');
