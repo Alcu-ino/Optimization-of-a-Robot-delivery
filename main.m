@@ -6,6 +6,8 @@ pesiPacchi= [20 30 40]; %peso in kg dei pacchi
 nodi = ['O';'B';'A'];
 clienti = ['A'];
 clienti_cell = cellstr(clienti);
+nodi_ricarica = ['B'];
+nodi_ricarica_cell = cellstr(nodi_ricarica);
 %%%%%%%%%%%%%%%%%%%%% ARCHI E PROPRIETA' %%%%%%%%%%%%%%%%%%%%%
 
 archi = [
@@ -86,6 +88,14 @@ for i = 1:numel(clienti_cell)
     fprintf(fid, ' %s', clienti_cell{i});
 end
 fprintf(fid, ';\n\n');
+
+% ── Set R ──────────────────────────────────────────
+fprintf(fid, 'set R :=');
+for i = 1:numel(nodi_ricarica_cell)
+    fprintf(fid, ' %s', nodi_ricarica_cell{i});
+end
+fprintf(fid, ';\n\n');
+
 
 % ── Set A (archi spazio-temporali) ─────────────────
 fprintf(fid, 'set A :=\n');
