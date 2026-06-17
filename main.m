@@ -4,7 +4,7 @@
 pesiPacchi= [20 30 40]; %peso in kg dei pacchi
 
 nodi = ['O';'B';'A'];
-clienti = ['A'];
+clienti = ['A';'B'];
 clienti_cell = cellstr(clienti);
 nodi_ricarica = ['B'];
 nodi_ricarica_cell = cellstr(nodi_ricarica);
@@ -24,7 +24,7 @@ archi = [
 
 %%%%%%%%%%%%%%%%%%%%% TEMPI E NODI %%%%%%%%%%%%%%%%%%%%%
 orario_apertura = {[0 12*4];[2*4 12*4];[11*4 12*4]}; %orari in slot da 15 minuti (orario 8-20)
-timeWindow = {[0 12*4];[0 12*4];[11*4 12*4]}; %tempi in slot da 15 minuti (orario 8-20)
+timeWindow = {[0 12*4];[6*4 7*4];[6*4 7*4]}; %tempi in slot da 15 minuti (orario 8-20)
 nodi_timeWindow = dictionary(nodi, timeWindow);
 nodi_orario_apertura = dictionary(nodi, orario_apertura);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -169,8 +169,16 @@ risultato = table(index0_filtrato, index1_filtrato, valori_filtrati, ...
 disp(risultato);
 D = digraph(index0_filtrato, index1_filtrato);
 plot(D);
+nodi_attivi = unique([index0_filtrato; index1_filtrato]);
 % ── RESTITUISCI SOC ─────────────────────────────
 soc = ampl.getVariable('soc');
-socM = x.getValues();
-valori_soc = socM.getColumnAsDoubles();
-disp(valori_soc);
+socM = soc.getValues();
+soc_index = socM.getColumnAsStrings('index0');
+valori_soc = socM.getColumnAsDoubles('soc.val');
+soc_index_str = string(soc_index);
+filtro_soc = ismember(soc_index_str, nodi_attivi);
+soc_index_filtrato  = string(soc_index(filtro_soc));
+valori_soc_filtrati = valori_soc(filtro_soc);
+risultato_soc = table(soc_index_filtrato, valori_soc_filtrati, ...
+    'VariableNames', {'nodo', 'SOC'});
+disp(risultato_soc);
