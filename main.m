@@ -144,6 +144,16 @@ ampl.readData(dat_file);
 ampl.setOption('solver', 'cplex'); 
 ampl.solve();
 
-%x = ampl.getVariable('x');
-%df = x.getValues();
-%disp(df);
+% ── RESTITUISCI X ─────────────────────────────
+x = ampl.getVariable('x');
+xM = x.getValues();
+valori_x = xM.getColumnAsDoubles('x.val');
+index0 = xM.getColumnAsStrings('index0'); 
+index1 = xM.getColumnAsStrings('index1');
+filtro = (valori_x == 1);
+index0_filtrato = string(index0(filtro));
+index1_filtrato = string(index1(filtro));
+valori_filtrati = valori_x(filtro);
+risultato = table(index0_filtrato, index1_filtrato, valori_filtrati, ...
+    'VariableNames', {'index0', 'index1', 'x_val'});
+disp(risultato);
