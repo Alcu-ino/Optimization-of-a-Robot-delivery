@@ -157,3 +157,5 @@ valori_filtrati = valori_x(filtro);
 risultato = table(index0_filtrato, index1_filtrato, valori_filtrati, ...
     'VariableNames', {'index0', 'index1', 'x_val'});
 disp(risultato);
+D = digraph(index0_filtrato, index1_filtrato);
+plot(D);
