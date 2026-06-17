@@ -35,12 +35,6 @@ subject to Visita_Unica_Cliente {c in C}:
     sum {(i,j) in A: nome_nodo_arrivo[i,j] == c and nome_nodo_partenza[i,j]!= c} x[i,j] == 1;
 
 #ENERGIA
-subject to Booleano_Ricarica {(i,j) in A: nome_nodo_arrivo[i,j] != nodoPartenza or nome_nodo_partenza[i,j] != nodoArrivo}:
-    ricarica[i,j]<= 0  
-;
-subject to Limite_Batteria{(i,j) in A}:
-    soc[j] <= soc[i]- energia[i,j]*x[i,j] + cap_batteria*2*(ricarica[i,j])+cap_batteria*2*(1-x[i,j])
-;
 subject to Batteria_MinSicurezza {v in V}:
     soc[v] >= 0.20 * cap_batteria;
 subject to capacita_Batteria {i in V}:
@@ -50,12 +44,13 @@ subject to Ricarica_Deposito {(i,j) in A: nome_nodo_arrivo[i,j] == nodoPartenza 
     soc[j] = cap_batteria
 ;
 
-subject to Ricarica_Deposito {(i,j) in A}:
-    if (nome_nodo_arrivo[i,j] in R and nome_nodo_partenza[i,j] == nome_nodo_arrivo[i,j]) then
-        soc[j] = cap_batteria
-    else
-        soc[j] <= soc[i] - energia[i,j]*x[i,j] + cap_batteria*(1 - x[i,j]);
-        
+subject to Ricarica {(i,j) in A: nome_nodo_arrivo[i,j] in R and nome_nodo_partenza[i,j] == nome_nodo_arrivo[i,j]}:
+    soc[j] >= cap_batteria - cap_batteria * (1 - x[i,j])
+    ;
+subject to Scarica {(i,j) in A: not (nome_nodo_arrivo[i,j] in R and nome_nodo_partenza[i,j] == nome_nodo_arrivo[i,j])}:
+    soc[j] <= soc[i] - energia[i,j]*x[i,j] + cap_batteria*(1 - x[i,j])
+;
+
 subject to CaricaIniziale:
     soc[nodoPartenza] = cap_batteria
 ;
