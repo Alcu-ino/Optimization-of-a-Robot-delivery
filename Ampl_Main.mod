@@ -1,6 +1,7 @@
 set V;                 #nodi Spacetime
 set A within {V, V};   #archi Spacetime
 set C;                 #clienti
+set R;                 #stazioni di ricarica
 
 param costo {A}; #PEDAGGIO
 param energia {A}; #ENERGIA CONSUMATA NEL TRAGITTO
@@ -9,17 +10,17 @@ param nodoPartenza symbolic within V; #DEPOSITO
 param nodoArrivo symbolic within V; #DEPOSITO A CHIUSURA
 param nome_nodo_arrivo {A} symbolic;  
 param nome_nodo_partenza {A} symbolic;
-param deadline {C} >= 0;#DA ESFILTRARE
-param startline {C} >=0 ;#DA ESFILTRARE
+param deadline {C} >= 0;
+param startline {C} >=0 ;
 param cap_batteria >= 0; #SECONDO ME NON SERVE E' UNA COSTANTE (100)
-param tempoNodo {A} >= 0; #tempo di arrivo al nodo, usato per calcolare il ritardo BISOGNA ESFILTRARLO
+param tempoNodo {A} >= 0; 
 
 var x {A} binary;
 var ritardo {C} >= 0;
 var soc {V} >= 0;
 var ricarica {A} binary; #elenco staioni di ricarica come C?
 #normalizzazione grandezze
-minimize CostoTotale:#DEVE MINIMIZZARE, IL RITARDO OLTRE  IL TEMPO DI PERCORRENZA E L'ENERGIA CONSUMATA, QUINDI OK!
+minimize CostoTotale:
     sum {(i,j) in A} (costo[i,j] + energia[i,j] + tempoPercorrenza[i,j])* x[i,j] + sum {c in C} ritardo[c];
 
 #CONSERVAZIONE FLUSSO
@@ -48,6 +49,13 @@ subject to capacita_Batteria {i in V}:
 subject to Ricarica_Deposito {(i,j) in A: nome_nodo_arrivo[i,j] == nodoPartenza and nome_nodo_partenza[i,j] == nodoArrivo}:
     soc[j] = cap_batteria
 ;
+
+subject to Ricarica_Deposito {(i,j) in A}:
+    if (nome_nodo_arrivo[i,j] in R and nome_nodo_partenza[i,j] == nome_nodo_arrivo[i,j]) then
+        soc[j] = cap_batteria
+    else
+        soc[j] <= soc[i] - energia[i,j]*x[i,j] + cap_batteria*(1 - x[i,j]);
+        
 subject to CaricaIniziale:
     soc[nodoPartenza] = cap_batteria
 ;
