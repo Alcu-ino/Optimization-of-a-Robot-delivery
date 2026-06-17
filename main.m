@@ -51,18 +51,20 @@ a_c        = cell(num_archi, 1);
 costo_v    = zeros(num_archi, 1);
 energ_v    = zeros(num_archi, 1);
 tempo_v    = zeros(num_archi, 1);
+tempoNodo_v= zeros(num_archi, 1);
 partenza_c = cell(num_archi, 1);
 arrivo_c   = cell(num_archi, 1);
 
 for i = 1:num_archi
     s             = A{i};
-    da_c{i}       = char(s.da_nodo);
-    a_c{i}        = char(s.a_nodo);
-    costo_v(i)    = double(s.costo);
-    energ_v(i)    = double(s.energia);
-    tempo_v(i)    = double(s.tempoPercorrenza);
-    partenza_c{i} = char(s.nome_nodo_partenza);
-    arrivo_c{i}   = char(s.nome_nodo_arrivo);
+    da_c{i}        = char(s.da_nodo);
+    a_c{i}         = char(s.a_nodo);
+    costo_v(i)     = double(s.costo);
+    energ_v(i)     = double(s.energia);
+    tempo_v(i)     = double(s.tempoPercorrenza);
+    tempoNodo_v(i) = str2double(extractAfter(a_c{i}, 1));
+    partenza_c{i}  = char(s.nome_nodo_partenza);
+    arrivo_c{i}    = char(s.nome_nodo_arrivo);
 end
 
 % Verifica — deve stampare valori reali, non 0 o vuoto
@@ -87,9 +89,9 @@ end
 fprintf(fid, ';\n\n');
 
 % ── Parametri numerici ─────────────────────────────
-params = {'costo', 'energia', 'tempoPercorrenza'};
-vals   = {costo_v, energ_v, tempo_v};
-for p = 1:3
+params = {'costo', 'energia', 'tempoPercorrenza', 'tempoNodo'};
+vals   = {costo_v, energ_v, tempo_v, tempoNodo_v};
+for p = 1:4
     fprintf(fid, 'param %s :=\n', params{p});
     for i = 1:num_archi
         fprintf(fid, '  %s %s %g\n', da_c{i}, a_c{i}, vals{p}(i));
@@ -107,6 +109,24 @@ for p = 1:2
     end
     fprintf(fid, ';\n\n');
 end
+
+% ── ORARIO MINIMO VOGLIO CONSEGNA(VETTORE STARTLINE->timeWindow) ────────────────────────────
+fprintf(fid, 'param startline :=\n');
+for i = 1:numel(clienti)
+    w = nodi_timeWindow(clienti{i});
+    fprintf(fid, '  %s %g\n', clienti{i}, w{1}(1));
+end
+fprintf(fid, ';\n\n');
+
+% ── ORARIO MASSIMO VOGLIO CONSEGNA(VETTORE DEADLINE->timeWindow) ────────────────────────────
+fprintf(fid, 'param deadline :=\n');
+for i = 1:numel(clienti)
+    w = nodi_timeWindow(clienti{i});
+    fprintf(fid, '  %s %g\n', clienti{i}, w{1}(2));
+end
+fprintf(fid, ';\n\n');
+
+% ── TEMPO DI ARRIVO AL NODO ────────────────────────────
 
 % ── Parametri scalari ──────────────────────────────
 fprintf(fid, 'param nodoPartenza := O0;\n');
