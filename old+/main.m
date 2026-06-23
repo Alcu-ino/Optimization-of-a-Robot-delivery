@@ -1,13 +1,15 @@
-% ASSUNZIONI SUL PROBLEMA:
-% I COSTI DI ENERGIA DEVONO ESSERE MAX 40 PERC DELLA BATTERIA PER TRATTA ALTRIMENTI ANDATA E RITORNO NON SONO POSSIBILI
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%ASSUNZIONI SUL PROBLEMA:
+%I COSTI DI ENERGIA DEVONO ESSERE MAX 40 PERC DELLA BATTERIA PER TRATTA ALTRIMENTI ANDATA E RITORNO NON SONO POSSIBILI
 pesiPacchi= [20 30 40]; %peso in kg dei pacchi
+
 nodi = ['O';'B';'A'];
 clienti = ['A';'B'];
 clienti_cell = cellstr(clienti);
 nodi_ricarica = ['B'];
 nodi_ricarica_cell = cellstr(nodi_ricarica);
-
 %%%%%%%%%%%%%%%%%%%%% ARCHI E PROPRIETA' %%%%%%%%%%%%%%%%%%%%%
+
 archi = [
     struct('nome',"OA",'costo',30,'energia',[10 15 8],'tempoPercorrenza',[2 3 2]);
     struct('nome',"AO",'costo',30,'energia',[10 15 8],'tempoPercorrenza', [2 3 2]);
@@ -16,16 +18,17 @@ archi = [
     struct('nome',"BA",'costo',57,'energia',[35 40 30],'tempoPercorrenza',[4 10 4]);
     struct('nome',"AB",'costo',57,'energia',[35 40 30],'tempoPercorrenza',[4 10 4]);
 ];
-%ENERGIA IN PERCENTUALE DELLA BATTERIA, TEMPO IN N SLOT DA 15 MINUTI
 
+%ENERGIA IN PERCENTUALE DELLA BATTERIA, TEMPO IN N SLOT DA 15 MINUTI
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %%%%%%%%%%%%%%%%%%%%% TEMPI E NODI %%%%%%%%%%%%%%%%%%%%%
-orario_apertura = {[0 12*4];[0*4 12*4];[11*4 12*4]}; %orari in slot da 15 minuti (orario 8-20)
-timeWindow = {[2*4 12*4];[2*4 7*4];[6*4 7*4]}; %tempi in slot da 15 minuti (orario 8-20)
+orario_apertura = {[0 12*4];[2*4 12*4];[11*4 12*4]}; %orari in slot da 15 minuti (orario 8-20)
+timeWindow = {[0 12*4];[6*4 7*4];[6*4 7*4]}; %tempi in slot da 15 minuti (orario 8-20)
 nodi_timeWindow = dictionary(nodi, timeWindow);
 nodi_orario_apertura = dictionary(nodi, orario_apertura);
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %%%%%%%%%%%%%%%%%%%%% NODI AMMISSIBILI (ORARIO APERTURA) %%%%%%%%%%%%%%%%%%%%%
 V = NodiSpaceTime(nodi,nodi_orario_apertura); %V{i} accede ai nodi
 disp(V)
@@ -35,9 +38,10 @@ A = ArchiSpaceTime(V,archi);
 disp(A)
 
 %%%%%%%%%%%%%%%%%%%%%% AMPL %%%%%%%%%%%%%%%%%%%%%
+
 ampl = com.ampl.AMPL(com.ampl.Environment('/home/vito/Scrivania/ampl'));
 ampl.reset();
-ampl.read(pwd+"/Scrivania/optimization/Optimization-of-a-Robot-delivery-1/Ampl_Main.mod");
+ampl.read('Ampl_Main.mod');
 
 %OPEN FILE
 dat_file = fullfile(pwd, 'archi_temp.dat');
@@ -45,6 +49,7 @@ fid = fopen(dat_file, 'w');
 fprintf(fid, 'data;\n\n');
 
 num_archi = length(A);
+
 da_c       = cell(num_archi, 1);
 a_c        = cell(num_archi, 1);
 costo_v    = zeros(num_archi, 1);
@@ -91,35 +96,6 @@ for i = 1:numel(nodi_ricarica_cell)
 end
 fprintf(fid, ';\n\n');
 
-% ── Set P (Pacchi) ──────────────────────────
-num_pacchi = length(pesiPacchi);
-fprintf(fid, 'set P :=');
-for p = 1:num_pacchi
-    fprintf(fid, ' P%d', p);
-end
-fprintf(fid, ';\n\n');
-
-% ── Parametro pacco_cliente ─────────────────
-pacco_destinatario = {'A', 'A', 'B'}; 
-fprintf(fid, 'param pacco_cliente :=\n');
-for p = 1:num_pacchi
-    fprintf(fid, '  P%d %s\n', p, pacco_destinatario{p});
-end
-fprintf(fid, ';\n\n');
-
-% ── Parametro peso_pacco ────────────────────
-fprintf(fid, 'param peso_pacco :=\n');
-for p = 1:num_pacchi
-    fprintf(fid, '  P%d %g\n', p, pesiPacchi(p));
-end
-fprintf(fid, ';\n\n');
-
-% ── Parametro penale_mancata_consegna ───────
-fprintf(fid, 'param penale_mancata_consegna :=\n');
-for p = 1:num_pacchi
-    fprintf(fid, '  P%d 100000\n', p); 
-end
-fprintf(fid, ';\n\n');
 
 % ── Set A (archi spazio-temporali) ─────────────────
 fprintf(fid, 'set A :=\n');
@@ -150,7 +126,7 @@ for p = 1:2
     fprintf(fid, ';\n\n');
 end
 
-% ── ORARIO MINIMO VOGLIO CONSEGNA ────────────────────────────
+% ── ORARIO MINIMO VOGLIO CONSEGNA(VETTORE STARTLINE->timeWindow) ────────────────────────────
 fprintf(fid, 'param startline :=\n');
 for i = 1:numel(clienti_cell)
     w = nodi_timeWindow(clienti_cell{i});
@@ -158,7 +134,7 @@ for i = 1:numel(clienti_cell)
 end
 fprintf(fid, ';\n\n');
 
-% ── ORARIO MASSIMO VOGLIO CONSEGNA ────────────────────────────
+% ── ORARIO MASSIMO VOGLIO CONSEGNA(VETTORE DEADLINE->timeWindow) ────────────────────────────
 fprintf(fid, 'param deadline :=\n');
 for i = 1:numel(clienti_cell)
     w = nodi_timeWindow(clienti_cell{i});
@@ -170,8 +146,7 @@ fprintf(fid, ';\n\n');
 fprintf(fid, 'param nodoPartenza := O0;\n');
 fprintf(fid, 'param nodoArrivo   := O47;\n');
 fprintf(fid, 'param cap_batteria := 100;\n');
-fprintf(fid, 'param cap_max_robot := 50;\n');
-fprintf(fid, 'param consumo_peso := 0.003;\n');
+
 fclose(fid);
 
 % ── SOLUZIONE ─────────────────────────────
@@ -185,18 +160,16 @@ xM = x.getValues();
 valori_x = xM.getColumnAsDoubles('x.val');
 index0 = xM.getColumnAsStrings('index0'); 
 index1 = xM.getColumnAsStrings('index1');
-filtro = (valori_x > 0.5);
+filtro = (valori_x == 1);
 index0_filtrato = string(index0(filtro));
 index1_filtrato = string(index1(filtro));
 valori_filtrati = valori_x(filtro);
 risultato = table(index0_filtrato, index1_filtrato, valori_filtrati, ...
     'VariableNames', {'index0', 'index1', 'x_val'});
 disp(risultato);
-
 D = digraph(index0_filtrato, index1_filtrato);
 plot(D);
 nodi_attivi = unique([index0_filtrato; index1_filtrato]);
-
 % ── RESTITUISCI SOC ─────────────────────────────
 soc = ampl.getVariable('soc');
 socM = soc.getValues();
@@ -209,21 +182,3 @@ valori_soc_filtrati = valori_soc(filtro_soc);
 risultato_soc = table(soc_index_filtrato, valori_soc_filtrati, ...
     'VariableNames', {'nodo', 'SOC'});
 disp(risultato_soc);
-
-%── GESTIONE DEL CARICO CON FILTRO LOGICO FUNZIONANTE ─────────────────────────────
-carica_pacco = ampl.getVariable('carica_pacco');
-cpM = carica_pacco.getValues();
-cp_da     = cpM.getColumnAsStrings('index0');
-cp_a      = cpM.getColumnAsStrings('index1');
-cp_pacco  = cpM.getColumnAsStrings('index2');
-cp_val    = cpM.getColumnAsDoubles('carica_pacco.val');
-
-% Filtriamo solo le attivazioni reali (dove carica_pacco == 1)
-filtro_cp = (cp_val > 0.5);
-
-risultato_caricamenti = table(string(cp_da(filtro_cp)), ...
-                              string(cp_a(filtro_cp)), ...
-                              string(cp_pacco(filtro_cp)), ...
-    'VariableNames', {'Dal_Nodo_SpazioTempo', 'Al_Nodo_SpazioTempo', 'Pacco_Caricato'});
-disp('=== LOG DEI CARICAMENTI AL DEPOSITO (MULTI-TRIP) ===');
-disp(risultato_caricamenti);

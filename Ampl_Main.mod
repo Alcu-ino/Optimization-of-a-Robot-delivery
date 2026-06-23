@@ -1,61 +1,135 @@
-set V;                 #nodi Spacetime
-set A within {V, V};   #archi Spacetime
-set C;                 #clienti
-set R;                 #stazioni di ricarica
+# =======================================================
+# SETS / INSIEMI
+# =======================================================
+set V;                 # Nodi Spacetime (es. O0, A4, B12...)
+set A within {V, V};   # Archi Spacetime
+set C;                 # Clienti fisici (es. A, B)
+set R;                 # Stazioni di ricarica fisiche (es. B)
+set P;                 # Insieme dei PACCHI disponibili
 
-param costo {A}; #PEDAGGIO
-param energia {A}; #ENERGIA CONSUMATA NEL TRAGITTO
-param tempoPercorrenza{A}; #TEMPO DI PERCORRENZA DEL TRAGITTO
-param nodoPartenza symbolic within V; #DEPOSITO
-param nodoArrivo symbolic within V; #DEPOSITO A CHIUSURA
-param nome_nodo_arrivo {A} symbolic;  
-param nome_nodo_partenza {A} symbolic;
-param deadline {C} >= 0;
-param startline {C} >=0 ;
-param cap_batteria >= 0; #SECONDO ME NON SERVE E' UNA COSTANTE (100)
+# =======================================================
+# PARAMETRI
+# =======================================================
+# Parametri Archi
+param costo {A}; 
+param energia {A};              
+param tempoPercorrenza {A}; 
 param tempoNodo {A} >= 0; 
 
+param nome_nodo_partenza {A} symbolic; 
+param nome_nodo_arrivo {A} symbolic;   
+
+param nodoPartenza symbolic within V;  
+param nodoArrivo symbolic within V;    
+
+# Parametri Finestre, Veicolo e Pacchi
+param deadline {C} >= 0;
+param startline {C} >= 0;
+param cap_batteria >= 0; 
+param consumo_peso >= 0;        
+param cap_max_robot >= 0;       
+param penale_mancata_consegna {P} >= 0; 
+
+param pacco_cliente {P} symbolic within C; # Il cliente fisico di destinazione ("A" o "B")
+param peso_pacco {P} >= 0;                 
+
+# =======================================================
+# VARIABILI
+# =======================================================
 var x {A} binary;
+var carica_pacco {A, P} binary;  # 1 se il pacco p transita sull'arco (i,j)
 var ritardo {C} >= 0;
-var soc {V} >= 0;
-var ricarica {A} binary; #elenco staioni di ricarica come C?
-#normalizzazione grandezze
+var soc {V} >= 0;               
+var peso_trasportato {A} >= 0;   # Peso effettivo lungo l'arco
+
+# =======================================================
+# FUNZIONE OBIETTIVO
+# =======================================================
 minimize CostoTotale:
-    sum {(i,j) in A} (costo[i,j] + energia[i,j] + tempoPercorrenza[i,j])* x[i,j] + sum {c in C} ritardo[c];
+    sum {(i,j) in A} (costo[i,j] + energia[i,j] + tempoPercorrenza[i,j]) * x[i,j] 
+    + sum {c in C} ritardo[c]
+    + sum {p in P} penale_mancata_consegna[p] * (1 - sum {(i,j) in A} carica_pacco[i,j,p]);
 
-#CONSERVAZIONE FLUSSO
+# =======================================================
+# VINCOLI
+# =======================================================
+
+# -------------------------------------------------------
+# 1. CONSERVAZIONE DEL FLUSSO DEL VEICOLO
+# -------------------------------------------------------
 subject to Conservazione {k in V}:
-    sum {(i,k) in A} x[i,k] - sum {(k,j) in A} x[k,j]  
-    = 
-    if k == nodoPartenza then -1 #robot esce dal deposito=-1
-    else if k == nodoArrivo then 1 #robot arriva al nodo cliente=1
-    else 0;
+    sum {(i,k) in A} x[i,k] - sum {(k,j) in A} x[k,j] = 
+        if k == nodoPartenza then -1
+        else if k == nodoArrivo then 1
+        else 0;
 
-subject to Visita_Unica_Cliente {c in C}:
-    sum {(i,j) in A: nome_nodo_arrivo[i,j] == c and nome_nodo_partenza[i,j]!= c} x[i,j] == 1;
+# -------------------------------------------------------
+# 2. ACCOPPIAMENTO FORTE ROBOT-PACCHI & CONSERVAZIONE FLUSSO
+# -------------------------------------------------------
 
-#ENERGIA
+# Un pacco può transitare su un arco SOLO SE il robot percorre quell'arco
+subject to Pacco_Segue_Robot {(i,j) in A, p in P}:
+    carica_pacco[i,j,p] <= x[i,j];
+
+# Un pacco non può uscire dal deposito totale più di una volta (evita rigenerazioni fittizie)
+subject to Carica_Massimo_Una_Volta {p in P}:
+    sum {(i,j) in A: substr(i,1,1) == "O" and substr(j,1,1) != "O"} carica_pacco[i,j,p] <= 1;
+
+# Conservazione del flusso condizionata dal tipo di nodo fisico
+subject to Conservazione_Flusso_Pacco {p in P, k in V}:
+    sum {(i,k) in A} carica_pacco[i,k,p] - sum {(k,j) in A} carica_pacco[k,j,p] =
+        if substr(k, 1, 1) == "O" then
+            # Al deposito i pacchi possono nascere (quindi le uscite superano le entrate)
+            - (sum {(k,j) in A: substr(j,1,1) != "O"} carica_pacco[k,j,p])
+        else if substr(k, 1, 1) == pacco_cliente[p] then
+            # Al cliente il pacco viene assorbito (le entrate superano le uscite)
+            (sum {(i,k) in A} carica_pacco[i,k,p])
+        else
+            # Nei nodi di transito o ricarica (es. "B"), ciò che entra deve uscire
+            0;
+# -------------------------------------------------------
+# 3. DINAMICA E BILANCIO DEL PESO (Multi-Trip)
+# -------------------------------------------------------
+subject to Bilancio_Peso_Nodi {k in V}:
+    sum {(k,j) in A} peso_trasportato[k,j] - sum {(i,k) in A} peso_trasportato[i,k] =
+        (sum {(k,j) in A, p in P} peso_pacco[p] * carica_pacco[k,j,p])  
+        - sum {(i,k) in A, p in P: nome_nodo_arrivo[i,k] == pacco_cliente[p] and nome_nodo_partenza[i,k] != pacco_cliente[p]} (peso_pacco[p] * carica_pacco[i,k,p]);
+
+subject to Limite_Capacita_Carico {(i,j) in A}:
+    peso_trasportato[i,j] <= cap_max_robot * x[i,j];
+
+# -------------------------------------------------------
+# 4. GESTIONE ENERGIA & STATO DI CARICA (SOC)
+# -------------------------------------------------------
 subject to Batteria_MinSicurezza {v in V}:
     soc[v] >= 0.20 * cap_batteria;
-subject to capacita_Batteria {i in V}:
-    soc[i] <= cap_batteria
-;
-subject to Ricarica_Deposito {(i,j) in A: nome_nodo_arrivo[i,j] == nodoPartenza and nome_nodo_partenza[i,j] == nodoArrivo}:
-    soc[j] = cap_batteria
-;
 
-subject to Ricarica {(i,j) in A: nome_nodo_arrivo[i,j] in R and nome_nodo_partenza[i,j] == nome_nodo_arrivo[i,j]}:
-    soc[j] >= cap_batteria - cap_batteria * (1 - x[i,j])
-    ;
-subject to Scarica {(i,j) in A: not (nome_nodo_arrivo[i,j] in R and nome_nodo_partenza[i,j] == nome_nodo_arrivo[i,j])}:
-    soc[j] <= soc[i] - energia[i,j]*x[i,j] + cap_batteria*(1 - x[i,j])
-;
+subject to Capacita_Massima_Batteria {i in V}:
+    soc[i] <= cap_batteria;
 
-subject to CaricaIniziale:
-    soc[nodoPartenza] = cap_batteria
-;
-# TEMPO
-subject to Consegna_in_finestra_minima{c in C, (i,j) in A: nome_nodo_arrivo[i,j] == c and nome_nodo_partenza[i,j]!=c }:
-    tempoNodo[i,j]*x[i,j] >= startline[c]*x[i,j];
+subject to Carica_Iniziale:
+    soc[nodoPartenza] = cap_batteria;
+
+# Vincoli dinamici corretti con Big-M isolata a 200 per evitare infeasibility sui nodi inattivi
+subject to Dinamica_Scarica_Superiore {(i,j) in A}:
+    soc[j] <= soc[i] - (energia[i,j] + consumo_peso * peso_trasportato[i,j]) + 200 * (1 - x[i,j]);
+
+subject to Dinamica_Scarica_Inferiore {(i,j) in A}:
+    soc[j] >= soc[i] - (energia[i,j] + consumo_peso * peso_trasportato[i,j]) - 200 * (1 - x[i,j]);
+
+# Ricarica se ti fermi in una stazione di ricarica R
+subject to Ricarica_Nodi_Speciali {(i,j) in A: nome_nodo_arrivo[i,j] in R and nome_nodo_partenza[i,j] == nome_nodo_arrivo[i,j]}:
+    soc[j] >= cap_batteria - cap_batteria * (1 - x[i,j]);
+
+# Ricarica se ritorni al deposito finale di chiusura
+subject to Ricarica_Deposito_Chiusura {(i,j) in A: nome_nodo_arrivo[i,j] == nodoArrivo}:
+    soc[j] >= cap_batteria - cap_batteria * (1 - x[i,j]);
+
+# -------------------------------------------------------
+# 5. GESTIONE TEMPO E FINESTRE DI CONSEGNA
+# -------------------------------------------------------
+subject to Consegna_in_finestra_minima {c in C, (i,j) in A: nome_nodo_arrivo[i,j] == c and nome_nodo_partenza[i,j] != c}:
+    tempoNodo[i,j] >= startline[c] - 100000 * (1 - x[i,j]);
+
 subject to Ritardi {c in C, (i,j) in A: nome_nodo_arrivo[i,j] == c and nome_nodo_partenza[i,j] != c}:
-     ritardo[c] >= x[i,j]*tempoNodo[i,j] - deadline[c]*x[i,j];
+    ritardo[c] >= tempoNodo[i,j] - deadline[c] - 100000 * (1 - x[i,j]);
