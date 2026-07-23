@@ -29,9 +29,26 @@ param cap_batteria >= 0;
 param consumo_peso >= 0;        
 param cap_max_robot >= 0;       
 param penale_mancata_consegna {P} >= 0; 
+param base {k in V} symbolic := substr(k, 1, match(k, "_") - 1);
 
 param pacco_cliente {P} symbolic within C; # Il cliente fisico di destinazione ("A" o "B")
 param peso_pacco {P} >= 0;                 
+
+#NORMALIZZAZIIONE OF:
+param slot {k in V} := num(substr(k, match(k, "_") + 1));
+param nArchiMax     := max {k in V} slot[k];        # lunghezza max di un percorso
+
+param scala_costo   := nArchiMax * max {(i,j) in A} costo[i,j];
+param scala_energia := cap_batteria;                # il SOC impedisce di superarla
+param scala_tempo   := nArchiMax * max {(i,j) in A} tempoPercorrenza[i,j];
+param scala_ritardo := card(C) * (nArchiMax - min {c in C} deadline[c]);
+param scala_penale  := sum {p in P} penale_mancata_consegna[p];
+
+param w_costo   >= 0, <= 1 default 0.20;
+param w_energia >= 0, <= 1 default 0.20;
+param w_tempo   >= 0, <= 1 default 0.20;
+param w_ritardo >= 0, <= 1 default 0.20;
+param w_penale  >= 0, <= 1 default 0.20;
 
 # =======================================================
 # VARIABILI
@@ -41,14 +58,17 @@ var carica_pacco {A, P} binary;  # 1 se il pacco p transita sull'arco (i,j)
 var ritardo {C} >= 0;
 var soc {V} >= 0;               
 var peso_trasportato {A} >= 0;   # Peso effettivo lungo l'arco
-
+var consegnato {P} binary;
 # =======================================================
 # FUNZIONE OBIETTIVO
 # =======================================================
 minimize CostoTotale:
-    sum {(i,j) in A} (costo[i,j] + energia[i,j] + tempoPercorrenza[i,j]) * x[i,j] 
-    + sum {c in C} ritardo[c]
-    + sum {p in P} penale_mancata_consegna[p] * (1 - sum {(i,j) in A} carica_pacco[i,j,p]);
+      w_costo   * (sum {(i,j) in A} costo[i,j]            * x[i,j]) / scala_costo
+    + w_energia * (sum {(i,j) in A} energia[i,j]          * x[i,j]) / scala_energia
+    + w_tempo   * (sum {(i,j) in A} tempoPercorrenza[i,j] * x[i,j]) / scala_tempo
+    + w_ritardo * (sum {c in C} ritardo[c])                         / scala_ritardo
+    + w_penale  * (sum {p in P} penale_mancata_consegna[p] * (1 - consegnato[p]))
+                                                                    / scala_penale;
 
 # =======================================================
 # VINCOLI
@@ -73,20 +93,24 @@ subject to Pacco_Segue_Robot {(i,j) in A, p in P}:
 
 # Un pacco non può uscire dal deposito totale più di una volta (evita rigenerazioni fittizie)
 subject to Carica_Massimo_Una_Volta {p in P}:
-    sum {(i,j) in A: substr(i,1,1) == "O" and substr(j,1,1) != "O"} carica_pacco[i,j,p] <= 1;
+    sum {(i,j) in A: base[i] == "O" and base[j] != "O"} carica_pacco[i,j,p] <= 1;
 
 # Conservazione del flusso condizionata dal tipo di nodo fisico
 subject to Conservazione_Flusso_Pacco {p in P, k in V}:
     sum {(i,k) in A} carica_pacco[i,k,p] - sum {(k,j) in A} carica_pacco[k,j,p] =
-        if substr(k, 1, 1) == "O" then
+        if base[k] == "O" then
             # Al deposito i pacchi possono nascere (quindi le uscite superano le entrate)
-            - (sum {(k,j) in A: substr(j,1,1) != "O"} carica_pacco[k,j,p])
-        else if substr(k, 1, 1) == pacco_cliente[p] then
+            - (sum {(k,j) in A: base[j] != "O"} carica_pacco[k,j,p])
+        else if base[k] == pacco_cliente[p] then
             # Al cliente il pacco viene assorbito (le entrate superano le uscite)
             (sum {(i,k) in A} carica_pacco[i,k,p])
         else
             # Nei nodi di transito o ricarica (es. "B"), ciò che entra deve uscire
             0;
+subject to Def_Consegnato {p in P}:
+    consegnato[p] =
+        sum {(i,j) in A: base[j] == pacco_cliente[p] and base[i] != pacco_cliente[p]}
+            carica_pacco[i,j,p];
 # -------------------------------------------------------
 # 3. DINAMICA E BILANCIO DEL PESO (Multi-Trip)
 # -------------------------------------------------------

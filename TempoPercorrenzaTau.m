@@ -1,28 +1,31 @@
-function [Ttot] = TempoPercorrenzaTau(i,j,labelPeriodo,archi)
-%TempoPercorrenzaTau(i,j,labelPeriodo,archiOrTAU)
-% Controlla tutti gli elementi della struct 'archi'. Se esiste un elemento
-% tale che archi(k).nome == string(i)+string(j) allora restituisce
-% archi(k).tempoPercorrenza(labelPeriodo) (o il campo alternativo
-% 'tempidipercorrenza' se presente).
+function Ttot = TempoPercorrenzaTau(da, a, periodo, archi)
+%TEMPOPERCORRENZATAU Tempo di percorrenza dell'arco da->a nel periodo dato.
 
-si = string(i);
-sj = string(j);
-key = si + sj;
+    SEP_ARCO = "@";
 
-if isstruct(archi) && ~isempty(archi)
-	if isfield(archi,'nome')
-		for k = 1:length(archi)
-			nome_k = string(archi(k).nome);
-			if nome_k == key
-				if isfield(archi(k),'tempoPercorrenza')
-					vec = archi(k).tempoPercorrenza;
-				else
-					error('TempoPercorrenzaTau:MissingField', ...
-						'Arco trovato ma non contiene un campo di tempo percorrenza.');
-				end
-				Ttot = vec(labelPeriodo);
-				return
-			end
-		end
-	end
+    da = string(da);
+    a  = string(a);
+
+    for k = 1:numel(archi)
+
+        if isfield(archi(k),'da') && isfield(archi(k),'a')
+            k_da = string(archi(k).da);
+            k_a  = string(archi(k).a);
+        else
+            parti = split(string(archi(k).nome), SEP_ARCO);
+            if numel(parti) ~= 2
+                continue
+            end
+            k_da = parti(1);
+            k_a  = parti(2);
+        end
+
+        if k_da == da && k_a == a
+            Ttot = archi(k).tempoPercorrenza(periodo);
+            return
+        end
+    end
+
+    error("TempoPercorrenzaTau:arcoNonTrovato", ...
+          "Nessun arco %s -> %s (periodo %d).", da, a, periodo);
 end

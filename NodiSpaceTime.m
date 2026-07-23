@@ -1,15 +1,22 @@
 function [V_T] = NodiSpaceTime(N, limiti_nodi)
-%NodiSpaceTime(insieme dei nodi, tempi limite consegna) 
-%Per ogni nodo crea il nodo spazio-tempo se puo esistere rispetto ai 
-%criteri di consegna
-V_T = [];
-for i=1:length(N)
-    for t=0:1:47 %timegrid
-    [a,b] = TimeWindow(limiti_nodi, N(i));
-    if t>=a && t<=b
-        V_T= [V_T; N(i)+string(t)]; %OGNI UNITA DI TEMPO RAPPRESENTA 15 minuti
-    end
+%NODISPACETIME Genera i nodi spazio-temporali nel formato "NOME:TEMPO".
+%   Per ogni nodo crea un nodo spazio-tempo per ogni istante della timegrid
+%   compatibile con la finestra temporale del nodo.
+%   Ogni unità di tempo rappresenta 15 minuti.
+
+    T_MAX    = 47;
+    SEP_NODO = ":";
+
+    N   = string(N(:));
+    V_T = strings(0,1);
+
+    for i = 1:numel(N)
+        [a, b] = TimeWindow(limiti_nodi, N(i));   % una sola chiamata per nodo
+
+        for t = 0:T_MAX
+            if t >= a && t <= b
+                V_T(end+1,1) = N(i) + SEP_NODO + string(t); %#ok<AGROW>
+            end
+        end
     end
 end
-
-end 
