@@ -253,7 +253,9 @@ ampl.read(MOD_FILE);
 ampl.readData(DAT_FILE);
 ampl.eval('display scala_costo, scala_energia, scala_tempo, scala_ritardo, scala_penale, nArchiMax;');
 ampl.setOption('solver', 'cplex');
+tic;
 ampl.solve();
+tempo_impiegato = toc;
 
 %% ---------- RISULTATI: variabile x ------------------------------------
 x  = ampl.getVariable('x');
@@ -310,20 +312,5 @@ risultato_caricamenti = table(cp_da(filtro_cp), cp_a(filtro_cp), cp_pacco(filtro
 
 disp('=== LOG DEI CARICAMENTI AL DEPOSITO (MULTI-TRIP) ===');
 disp(risultato_caricamenti);
-
-%% =======================================================================
-%  FUNZIONI LOCALI
-%  =======================================================================
-function out = amplNode(nomiNodi, sepInterno, sepAmpl)
-%AMPLNODE Converte i nomi dei nodi spazio-temporali in identificatori AMPL.
-%   Sostituisce il separatore interno con uno legale in AMPL, cosi' i nomi
-%   non devono essere quotati nel file .dat.
-
-    out = replace(string(nomiNodi(:)), sepInterno, sepAmpl);
-end
-
-function fcloseIfOpen(fid)
-    if ~isempty(fopen(fid))
-        fclose(fid);
-    end
-end
+disp('=== TEMPO IMPIEGATO DAL SOLVER ===');
+disp(tempo_impiegato)
