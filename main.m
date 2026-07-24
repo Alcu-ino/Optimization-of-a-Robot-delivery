@@ -12,8 +12,6 @@
 %    - archi : struct array degli archi fisici, campo 'nome' = "N1@N10"
 %  =======================================================================
 
-clc
-
 %% ---------- COSTANTI GLOBALI -------------------------------------------
 T_MAX      = 10;          % ultimo slot della timegrid (48 slot da 15 min)
 SEP_NODO   = ":";         % separatore interno MATLAB:  NOME:TEMPO
@@ -29,7 +27,8 @@ PENALE_MANCATA = 100000;
 AMPL_HOME  = '/home/vito/Scrivania/ampl';
 MOD_FILE   = fullfile(pwd, 'Scrivania', 'optimization', ...
                       'Optimization-of-a-Robot-delivery-1', 'Ampl_Main.mod');
-DAT_FILE   = fullfile(pwd, 'archi_temp.dat');
+DAT_FILE   = fullfile(pwd, 'Scrivania', 'optimization', ...
+                      'Optimization-of-a-Robot-delivery-1','archi_temp.dat');
 
 %% ---------- DATI DEL PROBLEMA ------------------------------------------
 pesiPacchi    = [4 4 5];        % peso in kg dei pacchi
