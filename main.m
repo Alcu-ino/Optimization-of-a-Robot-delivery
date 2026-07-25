@@ -13,7 +13,7 @@
 %  =======================================================================
 
 %% ---------- COSTANTI GLOBALI -------------------------------------------
-T_MAX      = 10;          % ultimo slot della timegrid (48 slot da 15 min)
+T_MAX      = 48;          % ultimo slot della timegrid (48 slot da 15 min)
 SEP_NODO   = ":";         % separatore interno MATLAB:  NOME:TEMPO
 SEP_ARCO   = "@";         % separatore archi fisici:    NOME@NOME
 SEP_AMPL   = "_";         % separatore usato nel file .dat (identificatore
@@ -31,17 +31,17 @@ DAT_FILE   = fullfile(pwd, 'Scrivania', 'optimization', ...
                       'Optimization-of-a-Robot-delivery-1','archi_temp.dat');
 
 %% ---------- DATI DEL PROBLEMA ------------------------------------------
-pesiPacchi    = [4 4 5];        % peso in kg dei pacchi
+pesiPacchi    = [4 4 5 4 4 5 5];        % peso in kg dei pacchi
 nodi          = string(nomi(:));   % dallo script OSM
-clienti       = ["N1"; "N2"];
-nodi_ricarica = ["N1"];             % GROUNDING
+clienti       = ["N1"; "N2";"N19"];
+nodi_ricarica = ["N1";"N15"];             % GROUNDING
 
 nodo_deposito = "O";
 t_partenza    = 0;
 t_arrivo      = T_MAX;
 
 % destinatario di ciascun pacco (deve essere un nodo cliente)
-pacco_destinatario = ["N2"; "N1"; "N2"];
+pacco_destinatario = ["N2"; "N1"; "N2";"N2"; "N1"; "N2";"N19"];
 
 %% ---------- CONTROLLI DI COERENZA --------------------------------------
 nNodi = numel(nodi);
@@ -101,7 +101,7 @@ partenza_c  = cell(num_archi, 1);
 arrivo_c    = cell(num_archi, 1);
 
 for i = 1:num_archi
-    s = A(i);                                  % struct array -> parentesi tonde
+    s = A(i);                                 
 
     da_c{i}        = char(s.da_nodo);
     a_c{i}         = char(s.a_nodo);
