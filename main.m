@@ -13,7 +13,7 @@
 %  =======================================================================
 
 %% ---------- COSTANTI GLOBALI -------------------------------------------
-T_MAX      = 48;          % ultimo slot della timegrid (48 slot da 15 min)
+T_MAX      = 47;          % ultimo slot della timegrid (48 slot da 15 min)
 SEP_NODO   = ":";         % separatore interno MATLAB:  NOME:TEMPO
 SEP_ARCO   = "@";         % separatore archi fisici:    NOME@NOME
 SEP_AMPL   = "_";         % separatore usato nel file .dat (identificatore
@@ -71,7 +71,7 @@ nodi_orario_apertura("N1") = {[3*4 5*4]};   % nodo di ricarica
 nodi_timeWindow("N2") = {[1*4  4*4]};
 
 %% ---------- COSTRUZIONE DELLA TEN --------------------------------------
-V = NodiSpaceTime(nodi, nodi_orario_apertura);
+V = NodiSpaceTime(nodi, nodi_orario_apertura,T_MAX);
 assert(~isempty(V),               "V vuoto: controlla gli orari di apertura.");
 assert(all(contains(V, SEP_NODO)), "Separatore mancante nei nodi di V.");
 

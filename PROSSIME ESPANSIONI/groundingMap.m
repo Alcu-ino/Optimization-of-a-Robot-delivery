@@ -65,7 +65,7 @@ archi = struct('nome',{},'costo',{},'energia',{},'tempoPercorrenza',{});
 k = 0;
 for i = 1:nEnt
     for j = i+1:nEnt
-        [route, L] = shortestpath(G, idxNodo(i), idxNodo(j));
+        [route, L] = shortestpath(G, idxNodo(i), idxNodo(j)); %L e' in metri
         if isempty(route)
             warning("Nessun percorso tra %s e %s (rete scollegata).", nomi(i), nomi(j));
             continue

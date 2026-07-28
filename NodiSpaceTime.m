@@ -1,10 +1,10 @@
-function [V_T] = NodiSpaceTime(N, limiti_nodi)
+function [V_T] = NodiSpaceTime(N, limiti_nodi,T_MAX)
 %NODISPACETIME Genera i nodi spazio-temporali nel formato "NOME:TEMPO".
 %   Per ogni nodo crea un nodo spazio-tempo per ogni istante della timegrid
 %   compatibile con la finestra temporale del nodo.
 %   Ogni unità di tempo rappresenta 15 minuti.
 
-    T_MAX    = 47;
+    T_MAX    = T_MAX;
     SEP_NODO = ":";
 
     N   = string(N(:));
