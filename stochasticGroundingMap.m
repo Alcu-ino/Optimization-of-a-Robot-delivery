@@ -9,6 +9,7 @@ costoRange = [20 60];
 
 nEnt = size(ENTRATE,1);
 nomi = ["O";"N"+string(1:nEnt-1)'];
+EuristicaGradoEntrate = zeros(nEnt,1);
 
 filename = "/home/vito/Scrivania/lib/export.osm";
 txt = fileread(filename);
@@ -76,6 +77,14 @@ for i = 1:nEnt
         nodiIntermedi = route(2:end-1);
         nodiIncrocioUsati = [nodiIncrocioUsati; nodiIntermedi(:)];
 
+        altri = setdiff(1:nEnt, [i j]);
+        passaPer = altri(ismember(idxNodo(altri), nodiIntermedi));
+        EuristicaGradoEntrate(passaPer) = EuristicaGradoEntrate(passaPer) + 1;
+
+        if ~isempty(passaPer)
+            fprintf("Il percorso %s -> %s passa per: %s\n", ...
+                nomi(i), nomi(j), strjoin(nomi(passaPer), ", "));
+        end
         Lkm_nom = Lnom * 1e-3;
         Lkm_rob = Lrob * 1e-3;
 
@@ -114,23 +123,8 @@ hold off
 geobasemap streets
 legend("rete","incroci rilevanti","entrate")
 
-%% ---------- FUNZIONE ROBUSTA ----------
-function [route, Lrob, Lnom] = robustShortestPath(G, src, dst, dev, Gamma)
-    nom = G.Edges.Weight;
-    thr = unique([dev(:); 0]);
-    bestCost = inf; route = [];
-    for l = 1:numel(thr)
-        theta = thr(l);
-        Gk = G;
-        Gk.Edges.Weight = nom + max(dev - theta, 0);
-        [p, c] = shortestpath(Gk, src, dst);
-        if ~isempty(p) && (Gamma*theta + c) < bestCost
-            bestCost = Gamma*theta + c;
-            route = p;
-        end
-    end
-    if isempty(route), Lrob = inf; Lnom = inf; return; end
-    Lrob = bestCost;
-    e    = findedge(G, route(1:end-1), route(2:end));
-    Lnom = sum(nom(e));
-end
+%%
+[~, ord] = sort(EuristicaGradoEntrate, 'descend');
+riepilogo = table(nomi(ord), EuristicaGradoEntrate(ord), ...
+    'VariableNames', {'Entrata','NumPercorsi'});
+disp(riepilogo)

@@ -9,6 +9,7 @@ costoRange = [20 60];
 
 nEnt = size(ENTRATE,1);
 nomi = ["O";"N"+string(1:nEnt-1)'];
+EuristicaGradoEntrate = zeros(nEnt,1);
 
 filename = "/home/vito/Scrivania/lib/export.osm";
 txt = fileread(filename);
@@ -70,8 +71,17 @@ for i = 1:nEnt
             warning("Nessun percorso tra %s e %s (rete scollegata).", nomi(i), nomi(j));
             continue
         end
+
         nodiIntermedi = route(2:end-1);
         nodiIncrocioUsati = [nodiIncrocioUsati; nodiIntermedi(:)];
+        altri = setdiff(1:nEnt, [i j]);
+        passaPer = altri(ismember(idxNodo(altri), nodiIntermedi));
+        EuristicaGradoEntrate(passaPer) = EuristicaGradoEntrate(passaPer) + 1;
+
+        if ~isempty(passaPer)
+            fprintf("Il percorso %s -> %s passa per: %s\n", ...
+                nomi(i), nomi(j), strjoin(nomi(passaPer), ", "));
+        end
 
         Lkm   = L * 1e-3;
         costo = randi(costoRange);                 % stesso costo nei due versi
@@ -125,3 +135,8 @@ geoplot(shp, "^", "MarkerFaceColor",[0.1 0.4 0.9], ...
 hold off
 geobasemap streets
 legend("rete","incroci rilevanti","entrate")
+%%
+[~, ord] = sort(EuristicaGradoEntrate, 'descend');
+riepilogo = table(nomi(ord), EuristicaGradoEntrate(ord), ...
+    'VariableNames', {'Entrata','NumPercorsi'});
+disp(riepilogo)
