@@ -13,6 +13,7 @@ risolto come programma lineare intero misto (MILP) con **AMPL + CPLEX**, orchest
 ## Indice
 
 - [Come funziona](#come-funziona)
+- [Inquadramento teorico](#inquadramento-teorico)
 - [Struttura della repository](#struttura-della-repository)
 - [Prerequisiti](#prerequisiti)
 - [Configurazione dei path](#configurazione-dei-path)
@@ -46,6 +47,96 @@ Esistono **due varianti di grounding** ed è previsto se ne esegua **una sola** 
 - `groundingMap.m` — versione **deterministica** (cammino minimo classico).
 - `stochasticGroundingMap.m` — versione **robusta** (cammino minimo robusto in stile
   budget-of-uncertainty, con deviazione `beta` sui pesi e budget `Gamma`).
+
+---
+
+## Inquadramento teorico
+
+### Il problema: routing di un robot per la consegna
+
+Il problema appartiene alla famiglia dei **Vehicle Routing Problem (VRP)** e ne combina tre
+estensioni classiche:
+
+- **VRP with Time Windows (VRPTW)** — ogni cliente ha una finestra temporale entro cui la
+  consegna è valida;
+- **Pickup-and-Delivery / multi-commodity** — più pacchi distinti, ciascuno con origine
+  (il deposito) e destinazione (un cliente), che viaggiano contemporaneamente a bordo;
+- **Electric VRP (E-VRP)** — il veicolo ha autonomia limitata (batteria) e può ricaricarsi in
+  stazioni dedicate.
+
+Nel caso specifico il "veicolo" è un singolo robot autonomo di consegna *last-mile*: si tratta
+quindi di un **E-VRPTW a veicolo singolo con multi-trip** (il robot può rientrare al deposito
+e ripartire più volte nell'orizzonte temporale).
+
+### Rete spazio-temporale (Time-Expanded Network)
+
+Per gestire simultaneamente **instradamento** (dove andare) e **schedulazione** (quando), il
+tempo continuo viene discretizzato in slot da 15 minuti e la rete fisica viene *espansa* nel
+tempo:
+
+- ogni nodo fisico `v` diventa una famiglia di nodi spazio-temporali `(v,t)`, uno per ciascun
+  istante `t` in cui `v` è disponibile;
+- un arco di **movimento** collega `(v,t)` a `(w, t+τ)`, dove `τ` è il tempo di percorrenza
+  (qui **dipendente dalla fascia oraria**);
+- un arco di **attesa (holding)** collega `(v,t)` a `(v,t+1)`, permettendo al robot di sostare.
+
+Il vantaggio è che vincoli intrinsecamente dinamici — finestre temporali, orari di apertura,
+tempi di viaggio variabili — diventano **vincoli statici di flusso** su un grafo espanso e
+aciclico, trattabile con le tecniche classiche del *network flow* (dynamic/time-expanded flows
+di Ford–Fulkerson).
+
+### Grounding: cammini minimi su rete stradale reale
+
+Lo stadio di grounding costruisce i dati degli archi a partire da OpenStreetMap:
+
+- il grafo stradale è pesato con **distanze geodetiche** calcolate sull'ellissoide WGS84;
+- ogni entrata (deposito, clienti, punti notevoli) è proiettata sul **nodo OSM più vicino**;
+- per ogni coppia di entrate si calcola il **cammino minimo** (algoritmo di Dijkstra) e da
+  esso si derivano costo, energia (∝ distanza × consumo) e tempo (∝ distanza / velocità).
+
+Questo separa il livello *micro* (topologia stradale dettagliata) dal livello *macro* (grafo
+logico tra le entrate) su cui opera l'ottimizzazione: la TEN non lavora sui singoli tratti
+stradali ma sugli archi aggregati tra entrate.
+
+### Variante robusta: ottimizzazione con budget di incertezza
+
+`stochasticGroundingMap.m` sostituisce il cammino minimo deterministico con un **cammino
+minimo robusto** (`robustShortestPath.m`), ispirato all'approccio *budget-of-uncertainty* di
+Bertsimas & Sim:
+
+- ogni peso d'arco può deviare dal valore nominale di al più `dev = beta · w`;
+- il parametro **Γ (`Gamma`)** limita quanti archi possono deviare simultaneamente al valore
+  peggiore, interpolando tra la soluzione nominale (Γ = 0) e quella completamente conservativa;
+- l'implementazione enumera un insieme di soglie `θ` e, per ciascuna, risolve un cammino minimo
+  sui pesi modificati `w + max(dev − θ, 0)`, scegliendo il minimo di `Γ·θ + costo`. È la
+  riformulazione del robust shortest path risolvibile in tempo polinomiale.
+
+Il risultato è un instradamento che resta buono anche in presenza di variazioni sfavorevoli
+(traffico, condizioni della strada, meteo).
+
+### Il modello MILP: flusso multi-commodity con accoppiamento
+
+Il cuore è un problema di **flusso su rete** formulato come programma lineare intero misto:
+
+- una variabile binaria `x` per arco descrive il cammino del robot (flusso unitario dal nodo
+  di partenza a quello di arrivo, con **conservazione del flusso** ai nodi intermedi);
+- ciascun pacco è una "commodity" con una propria conservazione del flusso — nasce al deposito
+  e viene assorbito al cliente di destinazione — da cui la natura **multi-commodity**;
+- il vincolo di **accoppiamento** `carica_pacco ≤ x` lega il flusso dei pacchi a quello del
+  robot: un pacco può muoversi solo dove si muove il robot.
+
+I vincoli energetici tracciano lo **stato di carica (SOC)** lungo il cammino, con la condizione
+di progetto che una singola tratta non consumi più del ~40% della batteria, così da garantire
+la fattibilità di andata e ritorno tra due ricariche.
+
+### Scalarizzazione multi-obiettivo e frontiera di Pareto
+
+Gli obiettivi in gioco — costo, energia, tempo, ritardo, penali per mancata consegna — sono in
+conflitto tra loro. Il modello li combina con il **metodo della somma pesata**
+(*weighted-sum scalarization*): ogni termine viene normalizzato per un fattore di scala e
+moltiplicato per un peso `w`. Variando i pesi si esplora la **frontiera di Pareto**, ovvero
+l'insieme delle soluzioni non dominate che rappresentano i migliori compromessi raggiungibili:
+è esattamente ciò che produce lo studio nella cartella `analisi/`.
 
 ---
 
