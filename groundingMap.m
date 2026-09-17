@@ -11,7 +11,7 @@ nEnt = size(ENTRATE,1);
 nomi = ["O";"N"+string(1:nEnt-1)'];
 EuristicaGradoEntrate = zeros(nEnt,1);
 
-filename = "/home/vito/Scrivania/lib/export.osm";
+filename = fullfile(pwd, 'lib/export.osm');
 txt = fileread(filename);
 ntok = regexp(txt, '<node id="(\d+)" lat="(-?\d+\.?\d*)" lon="(-?\d+\.?\d*)"', 'tokens');
 ntok = vertcat(ntok{:});

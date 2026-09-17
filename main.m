@@ -24,24 +24,22 @@ CAP_MAX_ROBOT  = 10;
 CONSUMO_PESO   = 0.003;
 PENALE_MANCATA = 100000;
 
-AMPL_HOME  = '/home/vito/Scrivania/ampl';
-MOD_FILE   = fullfile(pwd, 'Scrivania', 'optimization', ...
-                      'Optimization-of-a-Robot-delivery-1', 'Ampl_Main.mod');
-DAT_FILE   = fullfile(pwd, 'Scrivania', 'optimization', ...
-                      'Optimization-of-a-Robot-delivery-1','archi_temp.dat');
+AMPL_HOME  = '/home/vito/Scrivania/TOOLS/AMPL';
+MOD_FILE   = fullfile(pwd,'Ampl_Main.mod');
+DAT_FILE   = fullfile(pwd,'archi_temp.dat');
 
 %% ---------- DATI DEL PROBLEMA ------------------------------------------
-pesiPacchi    = [4 4 5 4 4 5 5];        % peso in kg dei pacchi
+pesiPacchi    = [2 7 4 9 1 6 3 10 5 8 2 6 9 4 7 1 10 3 5];        % peso in kg dei pacchi
 nodi          = string(nomi(:));   % dallo script OSM
-clienti       = ["N1"; "N2";"N19"];
-nodi_ricarica = ["N1";"N15"];             % GROUNDING
+clienti       = ["N14"; "N3";"N19";"N8";"N11";"N20";"N6";"N1";"N17";"N9";"N2";"N18";"N5";"N12";"N7"];
+nodi_ricarica = ["N11";"N12"];             % GROUNDING
 
 nodo_deposito = "O";
 t_partenza    = 0;
 t_arrivo      = T_MAX;
 
 % destinatario di ciascun pacco (deve essere un nodo cliente)
-pacco_destinatario = ["N2"; "N1"; "N2";"N2"; "N1"; "N2";"N19"];
+pacco_destinatario = ["N14"; "N3"; "N3"; "N19"; "N8"; "N11"; "N20";"N6"; "N6"; "N1"; "N17"; "N9"; "N14"; "N2"; "N18"; "N5"; "N12";"N20"; "N7"];
 
 %% ---------- CONTROLLI DI COERENZA --------------------------------------
 nNodi = numel(nodi);
@@ -58,14 +56,60 @@ assert(exist('archi','var') == 1 && ~isempty(archi), ...
 %% ---------- ORARI DI APERTURA E FINESTRE TEMPORALI ---------------------
 % Slot da 15 minuti su orario 8:00-20:00  ->  slot 0..47
 % Default: nodo aperto tutto il giorno, finestra libera.
-orario_apertura = repmat({[0 T_MAX]}, nNodi, 1);
-timeWindow      = repmat({[0 T_MAX]}, nNodi, 1);
+%orario_apertura = repmat({[0 T_MAX]}, nNodi, 1);
+orario_apertura = {
+    [0 47]
+    [ 3 15]
+    [17 29]
+    [28 44]
+    [ 9 31]
+    [35 47]
+    [21 46]
+    [ 0 12]
+    [14 26]
+    [30 42]
+    [ 6 18]
+    [23 40]
+    [11 23]
+    [33 48]
+    [18 35]
+    [ 2 20]
+    [26 38]
+    [ 8 20]
+    [19 31]
+    [31 43]
+    [12 24]
+};
 
+%timeWindow      = repmat({[0 T_MAX]}, nNodi, 1);
+timeWindow ={ 
+    [0 47]
+    [6 13] 
+    [20 26]
+    [30 37] 
+    [11 19] 
+    [39 44] 
+    [25 31] 
+    [3 10]
+    [17 22] 
+    [33 40] 
+    [9 14] 
+    [27 33] 
+    [15 20] 
+    [36 43] 
+    [22 28] 
+    [5 12] 
+    [29 36] 
+    [12 18]
+    [23 29]
+    [35 41] 
+    [16 22]
+    };
 nodi_orario_apertura = dictionary(nodi, orario_apertura);
 nodi_timeWindow      = dictionary(nodi, timeWindow);
 
 % --- eccezioni: apertura ---
-nodi_orario_apertura("N1") = {[3*4 5*4]};   % nodo di ricarica
+nodi_orario_apertura("N11") = {[3*4 5*4]};   % nodo di ricarica
 
 % --- eccezioni: finestre di consegna dei clienti ---
 nodi_timeWindow("N2") = {[1*4  4*4]};
