@@ -1,3 +1,4 @@
+param dir symbolic := "/home/vito/Scrivania/Optimization-of-a-Robot-delivery/analisi/";
 # ---------------------------------------------------------------------------
 # 1. SENSITIVITA CAPACITA BATTERIA
 # ---------------------------------------------------------------------------
@@ -55,13 +56,13 @@ for {k in 1..20} {
 
 # Sensitività batteria
 printf "# cap_val status_code n_archi costo energia tempo ritardo penale obiettivo consegnati\n"
-    > "/home/vito/Scrivania/Optimization-of-a-Robot-delivery/analisi/out_sens_batteria.txt";
+    > (dir & "out_sens_batteria.txt");
 for {k in 1..20} {
     printf "%f %d %d %f %f %f %f %f %f %d\n",
         res_cap_val[k], code_status_cap[k], res_cap_archi[k],
         res_cap_costo[k], res_cap_energia[k], res_cap_tempo[k],
         res_cap_ritardo[k], res_cap_penale[k],
         res_cap_obiettivo[k], res_cap_consegn[k]
-        > "/home/vito/Scrivania/Optimization-of-a-Robot-delivery/analisi/out_sens_batteria.txt";
+        > (dir & "out_sens_batteria.txt");
 }
-close "/home/vito/Scrivania/Optimization-of-a-Robot-delivery/analisi/out_sens_batteria.txt";
+close (dir & "out_sens_batteria.txt");
