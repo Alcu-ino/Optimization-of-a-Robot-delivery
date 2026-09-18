@@ -19047,6 +19047,6 @@ param deadline :=
 
 param nodoPartenza := O_0;
 param nodoArrivo   := O_47;
-param cap_batteria := 1260;
+param cap_batteria := 100;
 param cap_max_robot := 10;
 param consumo_peso := 0.003;

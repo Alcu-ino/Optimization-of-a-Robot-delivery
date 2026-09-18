@@ -1,4 +1,6 @@
 param dir symbolic := "/home/vito/Scrivania/Optimization-of-a-Robot-delivery/analisi/";
+option solver cplex;
+option cplex_options 'timelimit=200 threads=4';
 # ===========================================================================
 # ANALISI DI SENSITIVITA E FRONTIERA DI PARETO
 # ===========================================================================
@@ -49,7 +51,7 @@ for {step in 0 .. 4} {
     
     solve;
     
-    let res_pareto_w[idx_par]       := w_energia;
+    let res_pareto_w[idx_par]       := w_penale;
     let res_pareto_status[idx_par]  := solve_result;
     let res_pareto_costo[idx_par]   := sum {(i,j) in A} costo[i,j]            * x[i,j];
     let res_pareto_energia[idx_par] := sum {(i,j) in A} energia[i,j]          * x[i,j];
@@ -58,8 +60,8 @@ for {step in 0 .. 4} {
     let res_pareto_penale[idx_par] := sum {p in P} penale_mancata_consegna[p] * (1 - consegnato[p]);
     let res_pareto_obiett[idx_par]  := CostoTotale;
     
-    printf "POINT %2d | W_T=%.1f W_E=%.1f | %-12s | Costo=%7.2f | Energia TOT=%7.2f | PENALE TOT=%7.2f\n",
-           idx_par, w_penale, w_energia, solve_result,
+    printf "POINT %2d | W_P=%.1f W_R=%.1f | %-12s | Costo=%7.2f | Energia TOT=%7.2f | PENALE TOT=%7.2f\n",
+           idx_par, w_penale, w_ritardo, solve_result,
            res_pareto_costo[idx_par], res_pareto_energia[idx_par],res_pareto_penale[idx_par],
            res_pareto_tempo[idx_par];
            
@@ -75,11 +77,11 @@ for {k in 1..5} {
         else 9;
 }
 # Pareto pesi-somma
-printf "# w_tempo status_code costo energia tempo ritardo obiettivo\n"
+printf "#status_code w_penale w_ritardo costo energia tempo ritardo penale obiettivo\n"
     > (dir & "out_pareto_pesi_penale_ritardo.txt");
 for {k in 1..5} {
-    printf "%f %d %f %f %f %f %f\n",
-        res_pareto_w[k], code_status_par[k],
+    printf "%d %f %f %f %f %f %f %f %f\n",
+        code_status_par[k], res_pareto_w[k], (0.4-res_pareto_w[k]), 
         res_pareto_costo[k], res_pareto_energia[k], res_pareto_tempo[k],
         res_pareto_ritardo[k], res_pareto_penale[k], res_pareto_obiett[k]
         > (dir & "out_pareto_pesi_penale_ritardo.txt");

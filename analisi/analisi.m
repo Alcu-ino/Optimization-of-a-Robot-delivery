@@ -3,7 +3,8 @@ AMPL_HOME  = '/home/vito/Scrivania/TOOLS/AMPL';
 
 MOD_FILE   = fullfile(pwd,'Ampl_Main.mod');
 DAT_FILE   = fullfile(pwd,'archi_temp.dat');
-run_filename = fullfile(pwd,'analisi','analisi_pareto_pesi.run');%analisi_pareto_pesi.run|analisi_sens_batteria.run
+run_filename = fullfile(pwd,'analisi','analisi_pareto_pesi_energia_penale.run');
+%analisi_pareto_pesi_x_y.run|analisi_sens_batteria.run
 
 ampl = com.ampl.AMPL(com.ampl.Environment(AMPL_HOME));
 ampl.reset();

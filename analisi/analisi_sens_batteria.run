@@ -1,4 +1,6 @@
 param dir symbolic := "/home/vito/Scrivania/Optimization-of-a-Robot-delivery/analisi/";
+option solver cplex;
+option cplex_options 'timelimit=200 threads=4';
 # ---------------------------------------------------------------------------
 # 1. SENSITIVITA CAPACITA BATTERIA
 # ---------------------------------------------------------------------------
@@ -20,7 +22,7 @@ print "   SENSITIVITA: CAPACITA BATTERIA";
 print "===============================================================";
 let idx_cap := 1;
 
-for {c_val in {10, 40, 70 ,100, 200 ,400, 600, 1000, 1100, 1260,1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200}} {
+for {c_val in {10,100, 200 ,400, 600, 1000, 1100, 1260, 1400, 1600, 1800, 2000, 2200}} {
     let cap_batteria := c_val;
     solve;
     
@@ -46,8 +48,8 @@ for {c_val in {10, 40, 70 ,100, 200 ,400, 600, 1000, 1100, 1260,1300, 1400, 1500
     let idx_cap := idx_cap + 1;
 }
 
-param code_status_cap {1..20};
-for {k in 1..20} {
+param code_status_cap {1..13};
+for {k in 1..13} {
     let code_status_cap[k] :=
         if res_cap_status[k] == "solved"     then 0
         else if res_cap_status[k] == "infeasible" then 1
@@ -57,7 +59,7 @@ for {k in 1..20} {
 # Sensitività batteria
 printf "# cap_val status_code n_archi costo energia tempo ritardo penale obiettivo consegnati\n"
     > (dir & "out_sens_batteria.txt");
-for {k in 1..20} {
+for {k in 1..13} {
     printf "%f %d %d %f %f %f %f %f %f %d\n",
         res_cap_val[k], code_status_cap[k], res_cap_archi[k],
         res_cap_costo[k], res_cap_energia[k], res_cap_tempo[k],
