@@ -58,8 +58,8 @@ for {step in 0 .. 4} {
     let res_pareto_penale[idx_par] := sum {p in P} penale_mancata_consegna[p] * (1 - consegnato[p]);
     let res_pareto_obiett[idx_par]  := CostoTotale;
     
-    printf "POINT %2d | W_T=%.1f W_E=%.1f | %-12s | Costo=%7.2f | Energia=%7.2f | Tempo=%7.2f\n",
-           idx_par, w_tempo, w_energia, solve_result,
+    printf "POINT %2d | W_T=%.1f W_E=%.1f | %-12s | Costo=%7.2f | Energia TOT=%7.2f | PENALE TOT=%7.2f\n",
+           idx_par, w_penale, w_energia, solve_result,
            res_pareto_costo[idx_par], res_pareto_energia[idx_par],res_pareto_penale[idx_par],
            res_pareto_tempo[idx_par];
            
