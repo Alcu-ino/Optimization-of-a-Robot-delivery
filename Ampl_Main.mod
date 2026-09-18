@@ -38,10 +38,10 @@ param peso_pacco {P} >= 0;
 param slot {k in V} := num(substr(k, match(k, "_") + 1));
 param nArchiMax     := max {k in V} slot[k];        # lunghezza max di un percorso
 
-param scala_costo   := nArchiMax * max {(i,j) in A} costo[i,j];
-param scala_energia := cap_batteria;                # il SOC impedisce di superarla
-param scala_tempo   := nArchiMax * max {(i,j) in A} tempoPercorrenza[i,j];
-param scala_ritardo := card(C) * (nArchiMax - min {c in C} deadline[c]);
+param scala_costo   := nArchiMax * max {(i,j) in A} costo[i,j]; #costo max (viaggio solo su arco con costo massimo) 
+param scala_energia := nArchiMax * max {(i,j) in A} energia[i,j]; #energia max (viaggio solo su arco con dispendio di energia massima)
+param scala_tempo   := nArchiMax * max {(i,j) in A} tempoPercorrenza[i,j]; #tempo max (viaggio solo su arco con tempo di percorrenza massimo)
+param scala_ritardo := card(C) * max(1, scala_tempo - min {c in C} deadline[c]); #ritardo max (ritardo massimo per ogni nodo di consegna con massimo tempo di viaggio e minimo tempo di consegna)
 param scala_penale  := sum {p in P} penale_mancata_consegna[p];
 
 param w_costo   >= 0, <= 1 default 0.20;
