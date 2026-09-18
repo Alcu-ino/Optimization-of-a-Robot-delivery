@@ -1,0 +1,93 @@
+param dir symbolic := "/home/vito/Scrivania/Optimization-of-a-Robot-delivery/analisi/";
+# ===========================================================================
+# ANALISI DI SENSITIVITA E FRONTIERA DI PARETO
+# ===========================================================================
+
+
+
+# ---------------------------------------------------------------------------
+# 2. PREPARAZIONE PARETO: BACKUP PESI + VINCOLO CONSEGNA OBBLIGATORIA
+# ---------------------------------------------------------------------------
+param w_costo_bak   default w_costo;
+param w_energia_bak default w_energia;
+param w_tempo_bak   default w_tempo;
+param w_ritardo_bak default w_ritardo;
+param w_penale_bak  default w_penale;
+let w_costo_bak   := w_costo;
+let w_energia_bak := w_energia;
+let w_tempo_bak   := w_tempo;
+let w_ritardo_bak := w_ritardo;
+let w_penale_bak  := w_penale;
+
+let cap_batteria := 1260;
+
+# ---------------------------------------------------------------------------
+# 3. FRONTIERA PARETO — METODO PESI-SOMMA
+# ---------------------------------------------------------------------------
+param res_pareto_w        {1..5};
+param res_pareto_costo    {1..5};
+param res_pareto_energia  {1..5};
+param res_pareto_tempo    {1..5};
+param res_pareto_ritardo  {1..5};
+param res_pareto_penale   {1..5};
+param res_pareto_obiett   {1..5};
+param res_pareto_status   {1..5} symbolic;
+param idx_par default 1;
+
+print "";
+print "===============================================================";
+print "   FRONTIERA DI PARETO (pesi-somma)";
+print "===============================================================";
+let idx_par := 1;
+
+for {step in 0 .. 4} {
+    let w_costo   := 0.2;
+    let w_energia := 0.4 - (step / 10.0);
+    let w_tempo   := 0.2;
+    let w_ritardo := 0.2;
+    let w_penale  := step / 10.0;
+    
+    solve;
+    
+    let res_pareto_w[idx_par]       := w_energia;
+    let res_pareto_status[idx_par]  := solve_result;
+    let res_pareto_costo[idx_par]   := sum {(i,j) in A} costo[i,j]            * x[i,j];
+    let res_pareto_energia[idx_par] := sum {(i,j) in A} energia[i,j]          * x[i,j];
+    let res_pareto_tempo[idx_par]   := sum {(i,j) in A} tempoPercorrenza[i,j] * x[i,j];
+    let res_pareto_ritardo[idx_par] := sum {cc in C} ritardo[cc];
+    let res_pareto_penale[idx_par] := sum {p in P} penale_mancata_consegna[p] * (1 - consegnato[p]);
+    let res_pareto_obiett[idx_par]  := CostoTotale;
+    
+    printf "POINT %2d | W_T=%.1f W_E=%.1f | %-12s | Costo=%7.2f | Energia TOT=%7.2f | PENALE TOT=%7.2f\n",
+           idx_par, w_penale, w_energia, solve_result,
+           res_pareto_costo[idx_par], res_pareto_energia[idx_par],res_pareto_penale[idx_par],
+           res_pareto_tempo[idx_par];
+           
+    let idx_par := idx_par + 1;
+}
+
+# 4. ESPORTAZIONE FILE
+param code_status_par {1..5};
+for {k in 1..5} {
+    let code_status_par[k] :=
+        if res_pareto_status[k] == "solved"     then 0
+        else if res_pareto_status[k] == "infeasible" then 1
+        else 9;
+}
+# Pareto pesi-somma
+printf "# w_tempo status_code costo energia tempo ritardo obiettivo\n"
+    > (dir & "out_pareto_pesi_energia_penale.txt");
+for {k in 1..5} {
+    printf "%f %d %f %f %f %f %f\n",
+        res_pareto_w[k], code_status_par[k],
+        res_pareto_costo[k], res_pareto_energia[k], res_pareto_tempo[k],
+        res_pareto_ritardo[k], res_pareto_penale[k], res_pareto_obiett[k]
+        > (dir & "out_pareto_pesi_energia_penale.txt");
+}
+close (dir & "out_pareto_pesi_energia_penale.txt");
+
+print "";
+print "===============================================================";
+print "   ELABORAZIONE COMPLETATA";
+print "   File generati: out_pareto_pesi_energia_penale.txt";
+print "===============================================================";

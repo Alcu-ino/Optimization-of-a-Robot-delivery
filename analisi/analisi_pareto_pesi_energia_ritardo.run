@@ -44,8 +44,8 @@ for {step in 0 .. 4} {
     let w_costo   := 0.2;
     let w_energia := 0.4 - (step / 10.0);
     let w_tempo   := 0.2;
-    let w_ritardo := 0.2;
-    let w_penale  := step / 10.0;
+    let w_ritardo := step / 10.0;
+    let w_penale  := 0.2;
     
     solve;
     
@@ -76,18 +76,18 @@ for {k in 1..5} {
 }
 # Pareto pesi-somma
 printf "# w_tempo status_code costo energia tempo ritardo obiettivo\n"
-    > (dir & "out_pareto_pesi.txt");
+    > (dir & "out_pareto_pesi_energia_ritardo.txt");
 for {k in 1..5} {
     printf "%f %d %f %f %f %f %f\n",
         res_pareto_w[k], code_status_par[k],
         res_pareto_costo[k], res_pareto_energia[k], res_pareto_tempo[k],
         res_pareto_ritardo[k], res_pareto_penale[k], res_pareto_obiett[k]
-        > (dir & "out_pareto_pesi.txt");
+        > (dir & "out_pareto_pesi_energia_ritardo.txt");
 }
-close (dir & "out_pareto_pesi.txt");
+close (dir & "out_pareto_pesi_energia_ritardo.txt");
 
 print "";
 print "===============================================================";
 print "   ELABORAZIONE COMPLETATA";
-print "   File generati: out_sens_batteria.txt, out_pareto_pesi.txt";
+print "   File generati: out_pareto_pesi_energia_ritardo.txt";
 print "===============================================================";

@@ -66,3 +66,9 @@ for {k in 1..20} {
         > (dir & "out_sens_batteria.txt");
 }
 close (dir & "out_sens_batteria.txt");
+
+print "";
+print "===============================================================";
+print "   ELABORAZIONE COMPLETATA";
+print "   File generati: out_sens_batteria.txt";
+print "===============================================================";
