@@ -1,0 +1,4 @@
+n_clienti pacchi_per_cliente n_pacchi tw_inizio tw_fine tw_ore stato solve_result_num gap secondi nvars ncons consegnati non_consegnati ritardo obiettivo soc_min origine
+2 1 2 8 12 1 0 0 0 53.06 83920 131567 2 0 0 0.033289359 1215.97 1
+2 2 4 8 12 1 0 0 0.00980364 500.37 125376 177201 4 0 2 0.069017743 1151.88 0
+2 3 6 8 12 1 1 400 1 600.60 166832 222835 0 6 0 1.2154231 1236 0

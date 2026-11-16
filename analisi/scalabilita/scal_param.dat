@@ -1,0 +1,31 @@
+# Parametri dello studio (lancia_scalabilita.m, seme 1)
+param NCAND := 20;
+param ORDINE :=
+  1 N3
+  2 N15
+  3 N6
+  4 N19
+  5 N5
+  6 N7
+  7 N20
+  8 N13
+  9 N4
+  10 N8
+  11 N9
+  12 N1
+  13 N17
+  14 N11
+  15 N10
+  16 N18
+  17 N16
+  18 N12
+  19 N2
+  20 N14
+;
+param TW_INIZIO := 8;
+param TW_ORE_BASE := 1;
+param SLOT_ORA := 4;
+param GAP_STOP := 0.05;
+param PENALE_PACCO := 100000;
+param PPC_MAX := 30;
+param DIR_SCEN := "analisi/scalabilita/scenari/";

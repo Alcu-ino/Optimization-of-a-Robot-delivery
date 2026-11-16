@@ -1,0 +1,39 @@
+# 4 clienti, 1 pacchi per cliente, finestra 1 h
+set C := N3 N15 N6 N19;
+
+set P := N3p1 N15p1 N6p1 N19p1;
+
+param pacco_cliente :=
+  N3p1 N3
+  N15p1 N15
+  N6p1 N6
+  N19p1 N19
+;
+
+param peso_pacco :=
+  N3p1 10
+  N15p1 10
+  N6p1 10
+  N19p1 10
+;
+
+param penale_mancata_consegna :=
+  N3p1 100000
+  N15p1 100000
+  N6p1 100000
+  N19p1 100000
+;
+
+param startline :=
+  N3 8
+  N15 8
+  N6 8
+  N19 8
+;
+
+param deadline :=
+  N3 12
+  N15 12
+  N6 12
+  N19 12
+;

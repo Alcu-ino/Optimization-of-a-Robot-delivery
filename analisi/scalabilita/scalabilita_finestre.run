@@ -1,0 +1,149 @@
+# ===========================================================================
+# SCALABILITA' 3 - LARGHEZZA DELLA FINESTRA TEMPORALE
+#
+# Clienti: i primi N_META = floor(n/2) dell'ordine casuale, 1 pacco ciascuno.
+# Il passo con la finestra di base e' gia' noto (RIGA_NOTA) e viene solo
+# copiato; poi la finestra comune si allarga di 1 h a ogni passo (la
+# deadline avanza di SLOT_ORA slot, l'inizio TW_INIZIO resta fermo).
+# Arresto: gap a fine solve (600 s) >= GAP_STOP, nessuna soluzione, oppure
+# deadline oltre l'ultimo slot dell'orizzonte.
+#
+# Lanciato da lancia_scalabilita.m dopo l'esperimento clienti.
+# Ingresso: scal_base.dat, scal_param.dat, scal_meta.dat
+# Uscita  : analisi/out_scal_finestre.txt
+#           analisi/scalabilita/scenari/finestre_<ore>h.dat
+# ===========================================================================
+
+reset;
+model Ampl_Main.mod;                          # modello di riferimento, NON modificato
+data  analisi/scalabilita/scal_base.dat;      # rete, robot, batteria (da lancia_scalabilita.m)
+
+# ---------------------------------------------------------------------------
+# PARAMETRI DELLO STUDIO (scritti da lancia_scalabilita.m in scal_param.dat)
+# Sono parametri dello script, non del modello.
+# ---------------------------------------------------------------------------
+param NCAND integer > 0;            # clienti candidati
+param ORDINE {1..NCAND} symbolic;   # ordine casuale di aggiunta dei clienti
+param TW_INIZIO;                    # inizio della finestra comune (slot)
+param TW_ORE_BASE;                  # larghezza della finestra di base (ore)
+param SLOT_ORA;                     # slot in un'ora
+param GAP_STOP;                     # arresto: gap relativo a fine solve >= GAP_STOP
+param PENALE_PACCO;                 # penale di mancata consegna (come in main.m)
+param PPC_MAX integer;              # limite di sicurezza sui pacchi per cliente
+param DIR_SCEN symbolic;            # cartella dei dati dei singoli passi
+data analisi/scalabilita/scal_param.dat;
+
+# ---------------------------------------------------------------------------
+# SOLUZIONE GIA' NOTA (scritta da lancia_scalabilita.m in scal_meta.dat):
+# N_META = floor(n/2) clienti, con n = clienti all'arresto dell'esperimento
+# clienti; RIGA_NOTA = riga di out_scal_clienti.txt con N_META clienti,
+# 1 pacco e finestra di base (colonna origine = 1).
+# ---------------------------------------------------------------------------
+param N_META integer > 0;
+param RIGA_NOTA symbolic;
+data analisi/scalabilita/scal_meta.dat;
+
+option solver cplex;
+option cplex_options 'timelimit=600 mipgap=0.01 threads=4 return_mipgap=1 mipdisplay=0';
+option solver_msg 0;
+suffix relmipgap OUT;
+
+# ---------------------------------------------------------------------------
+# SCENARIO DEL PASSO CORRENTE E RISULTATI
+# ---------------------------------------------------------------------------
+set   CS ordered;          # clienti dello scenario
+param PPC integer;         # pacchi per cliente (uguale per tutti i clienti)
+param ORE;                 # larghezza della finestra comune (ore)
+param fdat symbolic;       # file dati del passo
+param fout symbolic;       # file dei risultati
+param ha_sol binary;  param stato integer;  param fermo binary;
+param r_gap;  param r_sec;  param r_cons;  param r_rit;  param r_obj;  param r_soc;
+
+let fout := "analisi/scalabilita/out_scal_finestre.txt";
+printf "n_clienti pacchi_per_cliente n_pacchi tw_inizio tw_fine tw_ore stato solve_result_num gap secondi nvars ncons consegnati non_consegnati ritardo obiettivo soc_min origine\n" > (fout);
+
+print "";
+print "===============================================================";
+print "   SCALABILITA': LARGHEZZA DELLA FINESTRA";
+print "===============================================================";
+
+let CS  := setof {i in 1..N_META} ORDINE[i];
+let PPC := 1;
+printf "%s\n", RIGA_NOTA > (fout);                    # finestra di base: gia' nota
+printf "  %2d clienti x 1 pacchi | finestra %g h | soluzione riusata dall'esperimento clienti\n", N_META, TW_ORE_BASE;
+
+for {h in 1..100} {
+    let ORE := TW_ORE_BASE + h;                        # +1 h a ogni passo
+    if TW_INIZIO + ORE * SLOT_ORA > max {v in V} slot[v] then {
+        print "   ARRESTO: la finestra supera l'orizzonte";
+        break;
+    }
+    let fdat := DIR_SCEN & "finestre_" & ORE & "h.dat";
+
+    # --- A. DATI DEL PASSO: scrittura del file e caricamento -------------------
+    # Pacchi <cliente>p1 .. <cliente>pPPC, peso = capacita' del robot,
+    # finestra uguale per tutti [TW_INIZIO, TW_INIZIO + ORE h].
+    printf "# %d clienti, %d pacchi per cliente, finestra %g h\n", card(CS), PPC, ORE > (fdat);
+    printf "set C :=" > (fdat);
+    printf {c in CS} " %s", c > (fdat);
+    printf ";\n\nset P :=" > (fdat);
+    printf {c in CS, j in 1..PPC} " %sp%d", c, j > (fdat);
+    printf ";\n\nparam pacco_cliente :=\n" > (fdat);
+    printf {c in CS, j in 1..PPC} "  %sp%d %s\n", c, j, c > (fdat);
+    printf ";\n\nparam peso_pacco :=\n" > (fdat);
+    printf {c in CS, j in 1..PPC} "  %sp%d %g\n", c, j, cap_max_robot > (fdat);
+    printf ";\n\nparam penale_mancata_consegna :=\n" > (fdat);
+    printf {c in CS, j in 1..PPC} "  %sp%d %g\n", c, j, PENALE_PACCO > (fdat);
+    printf ";\n\nparam startline :=\n" > (fdat);
+    printf {c in CS} "  %s %d\n", c, TW_INIZIO > (fdat);
+    printf ";\n\nparam deadline :=\n" > (fdat);
+    printf {c in CS} "  %s %d\n", c, TW_INIZIO + ORE * SLOT_ORA > (fdat);
+    printf ";\n" > (fdat);
+    close (fdat);
+
+    reset data C, P, pacco_cliente, peso_pacco, penale_mancata_consegna, startline, deadline;
+    data (fdat);
+
+    # --- B. RISOLUZIONE ----------------------------------------------------------
+    let {(i,j) in A} x[i,j] := 0;     # nessun valore del passo precedente
+    solve;
+
+    let r_sec  := _solve_elapsed_time;
+    let ha_sol := if sum {(i,j) in A: i == nodoPartenza} x[i,j] > 0.5 then 1 else 0;
+    let stato  := if solve_result == "solved" and ha_sol == 1 then 0     # ottimo (entro mipgap)
+                  else if ha_sol == 1 then 1                              # limite di tempo
+                  else if solve_result == "infeasible" then 2
+                  else 3;                                                 # nessuna soluzione
+
+    # --- C. REGISTRAZIONE (origine = 0: risolto in questo script) ---------------
+    if ha_sol == 1 then {
+        let r_gap  := CostoTotale.relmipgap;
+        let r_cons := round(sum {p in P} consegnato[p]);
+        let r_rit  := sum {c in C} ritardo[c];
+        let r_obj  := CostoTotale;
+        let r_soc  := min {(i,j) in A: x[i,j] > 0.5} soc[j];
+        let fermo  := if r_gap >= GAP_STOP then 1 else 0;
+
+        printf "%d %d %d %d %d %g %d %d %.6g %.2f %d %d %d %d %.6g %.8g %.6g %d\n",
+            card(C), PPC, card(P), TW_INIZIO, TW_INIZIO + ORE * SLOT_ORA, ORE,
+            stato, solve_result_num, r_gap, r_sec, _nvars, _ncons,
+            r_cons, card(P) - r_cons, r_rit, r_obj, r_soc, 0 > (fout);
+        printf "  %2d clienti x %d pacchi | finestra %g h | %-8s | %6.1f s | gap %.4f | consegnati %d/%d\n",
+            card(C), PPC, ORE, solve_result, r_sec, r_gap, r_cons, card(P);
+    } else {
+        let fermo := 1;
+        printf "%d %d %d %d %d %g %d %d NaN %.2f %d %d NaN NaN NaN NaN NaN %d\n",
+            card(C), PPC, card(P), TW_INIZIO, TW_INIZIO + ORE * SLOT_ORA, ORE,
+            stato, solve_result_num, r_sec, _nvars, _ncons, 0 > (fout);
+        printf "  %2d clienti x %d pacchi | finestra %g h | %-8s | %6.1f s | NESSUNA SOLUZIONE\n",
+            card(C), PPC, ORE, solve_result, r_sec;
+    }
+
+    # --- D. CRITERIO DI ARRESTO -------------------------------------------------
+    if fermo == 1 then {
+        print "   ARRESTO: gap a fine solve >= GAP_STOP o nessuna soluzione";
+        break;
+    }
+}
+close (fout);
+printf "\n   File generato: %s\n", fout;
