@@ -84,7 +84,7 @@ param M_soc {(i,j) in A} := 0.8 * cap_batteria + max(0, energia[i,j]);
 # -------------------------------------------------------
 param nArchiMax     := max {k in V} slot[k];                        # orizzonte / lunghezza max di un percorso
 param scala_costo   := nArchiMax * max {(i,j) in A} costo[i,j];
-param scala_energia := nArchiMax * max {(i,j) in A} energia[i,j];
+param scala_energia := nArchiMax * max {(i,j) in A} (energia[i,j] + consumo_peso * cap_max_robot);
 param scala_tempo   := nArchiMax * max {(i,j) in A} tempoPercorrenza[i,j];
 param scala_tempo_op := max(1, nArchiMax - slot[nodoPartenza]);     # [C5] orizzonte
 param scala_ritardo := card(C) * max(1, scala_tempo - min {c in C} deadline[c]);
@@ -114,7 +114,7 @@ var consegnato {P} binary;
 # =======================================================
 minimize CostoTotale:
       w_costo   * (sum {(i,j) in A} costo[i,j]   * x[i,j]) / scala_costo
-    + w_energia * (sum {(i,j) in A} energia[i,j] * x[i,j]) / scala_energia
+    + w_energia * (sum {(i,j) in A} (energia[i,j] * x[i,j]+ consumo_peso * peso_trasportato[i,j])) / scala_energia
     + w_tempo   * (sum {(i,j) in A: base[i] != "O" or base[j] != "O"}
                        tempoPercorrenza[i,j] * x[i,j])     / scala_tempo_op
     + w_ritardo * (sum {c in C} ritardo[c])                / scala_ritardo

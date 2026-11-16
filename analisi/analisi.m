@@ -24,11 +24,11 @@ STATO_NOMI = ["ottimo", "limite di tempo", "infeasible", "nessuna soluzione"];
 
 % esperimento | colonna x | colonna y | etichetta x | etichetta y
 ESPERIMENTI = {
-    'energia_penale',  'energia',        'non_consegnati', 'Energia consumata (% batteria)', 'Pacchi non consegnati'
-    'energia_ritardo', 'energia',        'ritardo',        'Energia consumata (% batteria)', 'Ritardo totale (slot)'
+    'energia_penale',  'energia',        'non_consegnati', 'Energia consumata', 'Pacchi non consegnati'
+    'energia_ritardo', 'energia',        'ritardo',        'Energia consumata', 'Ritardo totale (slot)'
     'penale_ritardo',  'non_consegnati', 'ritardo',        'Pacchi non consegnati',          'Ritardo totale (slot)'
     'tempo_ritardo',   'tempo_op',       'ritardo',        'Tempo operativo (slot)',         'Ritardo totale (slot)'
-    'energia_tempooperativo', 'energia',     'tempo_op',       'Energia consumata (% batteria)', 'Tempo operativo (slot)'
+    'energia_tempooperativo', 'energia',     'tempo_op',       'Energia consumata', 'Tempo operativo (slot)'
 };
 
 %% ---------- LETTURA ----------------------------------------------------
