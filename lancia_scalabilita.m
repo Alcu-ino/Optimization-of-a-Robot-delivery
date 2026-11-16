@@ -20,9 +20,18 @@
 %   3. scalabilita_pacchi.run: floor(n/2) clienti, 2, 3, ... pacchi per
 %      cliente, fino a gap >= 5%.
 %   4. scalabilita_finestre.run: floor(n/2) clienti, finestra +1 h a ogni
-%      passo, fino a gap >= 5%.
-%   I .run scrivono analisi/out_scal_*.txt e i dati di ogni passo in
-%   analisi/scalabilita/scenari/. I grafici li fa grafici_scalabilita.m.
+%      passo, fino a gap >= 5% (o fino alla chiusura dei clienti).
+%   5. scalabilita_apertura.run: floor(n/2) clienti, 1 pacco, finestra di
+%      base; l'orario di apertura comune parte da APERTURA_COMUNE (soluzione
+%      gia' nota) e si allarga di 1 h a ogni passo, fino a gap >= 5% o a
+%      tutta la giornata. L'apertura cambia la rete spazio-tempo: MATLAB
+%      prepara in anticipo la rete di ogni passo (aperture/rete_<k>.dat) e
+%      la lista dei passi (scal_aperture.dat); il .run le carica una per volta.
+%   I .run scrivono analisi/scalabilita/out_scal_*.txt e i dati di ogni passo
+%   in analisi/scalabilita/scenari/. I grafici li fa grafici_scalabilita.m.
+%
+%  NB: perche' l'apertura si possa allargare, APERTURA_COMUNE deve essere
+%  piu' stretta di tutta la giornata [0 47].
 %
 %  Prerequisito: nomi e archi nel workspace (groundingMap.m); se mancano,
 %  lo script esegue groundingMap.m.
@@ -43,11 +52,15 @@ DIR_SCEN    = fullfile(DIR_SCAL, 'scenari');          % dati di ogni passo (scri
 BASE_DAT    = fullfile(DIR_SCAL, 'scal_base.dat');
 PARAM_DAT   = fullfile(DIR_SCAL, 'scal_param.dat');
 META_DAT    = fullfile(DIR_SCAL, 'scal_meta.dat');
+DIR_AP      = fullfile(DIR_SCAL, 'aperture');         % reti dei passi dell'esperimento apertura
+AP_DAT      = fullfile(DIR_SCAL, 'scal_aperture.dat');
 
 ESPERIMENTI = struct( ...
-    'nome', {'clienti', 'pacchi', 'finestre'}, ...
-    'run',  {'scalabilita_clienti.run', 'scalabilita_pacchi.run', 'scalabilita_finestre.run'}, ...
-    'out',  {'out_scal_clienti.txt', 'out_scal_pacchi.txt', 'out_scal_finestre.txt'});
+    'nome', {'clienti', 'pacchi', 'finestre', 'apertura'}, ...
+    'run',  {'scalabilita_clienti.run', 'scalabilita_pacchi.run', ...
+             'scalabilita_finestre.run', 'scalabilita_apertura.run'}, ...
+    'out',  {'out_scal_clienti.txt', 'out_scal_pacchi.txt', ...
+             'out_scal_finestre.txt', 'out_scal_apertura.txt'});
 
 % --- parametri dello studio -------------------------------------------
 SEED            = 1;       % seme dell'ordine casuale dei clienti
@@ -57,7 +70,10 @@ TW_INIZIO       = 8;       % inizio della finestra comune (slot; slot 0 = 8:00 -
 TW_ORE_BASE     = 1;       % larghezza della finestra negli esperimenti clienti e pacchi [h]
 SLOT_ORA        = 4;       % slot da 15 minuti
 PPC_MAX         = 30;      % limite di sicurezza sui pacchi per cliente
-APERTURA_COMUNE = [0 47];  % orario di apertura (finestra rigida) uguale per tutti i clienti
+APERTURA_COMUNE = [8 24];  % orario di apertura (finestra rigida) uguale per tutti i clienti,
+                           % in slot: [8 24] = 10:00-14:00. Deve contenere la finestra di
+                           % base e lasciare spazio per allargarla (non [0 47]).
+APERTURA_PASSO_ORE = 1;    % allargamento dell'apertura a ogni passo [h]
 MOSTRA_GRAFICI  = true;    % al termine esegue grafici_scalabilita.m
 
 % --- parametri del modello: gli stessi di main.m ---------------------------
@@ -80,9 +96,12 @@ end
 
 tw_fine = TW_INIZIO + TW_ORE_BASE * SLOT_ORA;
 assert(tw_fine <= T_MAX, "La finestra di base [%d %d] supera l'orizzonte (%d).", TW_INIZIO, tw_fine, T_MAX);
-assert(TW_INIZIO >= APERTURA_COMUNE(1) && TW_INIZIO <= APERTURA_COMUNE(2), ...
-       "La finestra inizia (slot %d) fuori dall'orario di apertura [%d %d].", ...
-       TW_INIZIO, APERTURA_COMUNE(1), APERTURA_COMUNE(2));
+assert(TW_INIZIO >= APERTURA_COMUNE(1) && tw_fine <= APERTURA_COMUNE(2), ...
+       "La finestra di base [%d %d] non e' dentro l'orario di apertura [%d %d].", ...
+       TW_INIZIO, tw_fine, APERTURA_COMUNE(1), APERTURA_COMUNE(2));
+if isequal(APERTURA_COMUNE, [0 T_MAX])
+    warning("APERTURA_COMUNE e' gia' tutta la giornata: l'esperimento apertura non ha passi.");
+end
 
 if ~(exist('nomi', 'var') && exist('archi', 'var'))
     fprintf("'nomi' e 'archi' non sono nel workspace: eseguo groundingMap.m\n");
@@ -97,6 +116,10 @@ for e = ESPERIMENTI
     if isfile(f), delete(f); end
 end
 if isfile(META_DAT), delete(META_DAT); end
+if isfile(AP_DAT),   delete(AP_DAT);   end
+if ~isfolder(DIR_AP), mkdir(DIR_AP); end
+vecchie = dir(fullfile(DIR_AP, '*.dat'));
+for i = 1:numel(vecchie), delete(fullfile(DIR_AP, vecchie(i).name)); end
 
 %% 3. DATI DI BASE: rete spazio-tempo con apertura comune -> scal_base.dat
 nodi      = string(nomi(:));
@@ -104,49 +127,14 @@ candidati = nodi(nodi ~= nodo_deposito);
 assert(all(ismember([nodi_ricarica; nodo_deposito], nodi)), ...
        "Deposito o stazioni di ricarica non presenti in 'nomi'.");
 
-orari = repmat({APERTURA_COMUNE}, numel(nodi), 1);
-orari{nodi == nodo_deposito} = [0 T_MAX];             % il deposito resta aperto tutto il giorno
-V = NodiSpaceTime(nodi, dictionary(nodi, orari), T_MAX);
-A = ArchiSpaceTime(V, archi, T_MAX);
-fprintf("Rete di base: %d nodi, %d archi (apertura comune [%d %d]).\n", ...
-        numel(V), numel(A), APERTURA_COMUNE(1), APERTURA_COMUNE(2));
-
-nA      = numel(A);
-da      = strings(nA, 1);  a     = strings(nA, 1);
-nomeDa  = strings(nA, 1);  nomeA = strings(nA, 1);
-costo   = zeros(nA, 1);    energia = zeros(nA, 1);  tempo = zeros(nA, 1);
-for i = 1:nA
-    da(i)      = A(i).da_nodo;             a(i)       = A(i).a_nodo;
-    nomeDa(i)  = A(i).nome_nodo_partenza;  nomeA(i)   = A(i).nome_nodo_arrivo;
-    costo(i)   = double(A(i).costo);       energia(i) = double(A(i).energia);
-    tempo(i)   = double(A(i).tempoPercorrenza);
-end
-slotDa = str2double(extractAfter(da, ":"));
-slotA  = str2double(extractAfter(a,  ":"));          % = tempoNodo, come in main.m
-assert(all(tempo == slotA - slotDa), "tempoPercorrenza non coerente con gli slot.");
-
-daA = amplNode(da, ":", "_");
-aA  = amplNode(a,  ":", "_");
-
 fid = fopen(BASE_DAT, 'w');
 assert(fid > 0, "Impossibile scrivere %s", BASE_DAT);
 fprintf(fid, '# Rete di base per la scalabilita'' (lancia_scalabilita.m, %s)\n', string(datetime('now')));
 fprintf(fid, '# Clienti, pacchi e finestre NON sono qui: li scrive ogni .run a ogni passo.\n\n');
-fprintf(fid, 'set V :=');   fprintf(fid, ' %s', amplNode(V, ":", "_"));   fprintf(fid, ';\n\n');
-fprintf(fid, 'set R :=');   fprintf(fid, ' %s', nodi_ricarica);            fprintf(fid, ';\n\n');
-fprintf(fid, 'set A :=\n'); fprintf(fid, '  (%s, %s)\n', [daA aA]');      fprintf(fid, ';\n\n');
-num = {'costo', costo; 'energia', energia; 'tempoPercorrenza', tempo; 'tempoNodo', slotA};
-for p = 1:size(num, 1)
-    fprintf(fid, 'param %s :=\n', num{p,1});
-    fprintf(fid, '%s\n', compose("  %s %s %.15g", daA, aA, num{p,2}));
-    fprintf(fid, ';\n\n');
-end
-sym = {'nome_nodo_partenza', nomeDa; 'nome_nodo_arrivo', nomeA};
-for p = 1:size(sym, 1)
-    fprintf(fid, 'param %s :=\n', sym{p,1});
-    fprintf(fid, '%s\n', compose("  %s %s %s", daA, aA, sym{p,2}));
-    fprintf(fid, ';\n\n');
-end
+[nV, nA] = scriviRete(fid, nodi, archi, APERTURA_COMUNE, nodo_deposito, T_MAX);
+fprintf("Rete di base: %d nodi, %d archi (apertura comune [%d %d]).\n", ...
+        nV, nA, APERTURA_COMUNE(1), APERTURA_COMUNE(2));
+fprintf(fid, 'set R :=');   fprintf(fid, ' %s', nodi_ricarica);   fprintf(fid, ';\n\n');
 fprintf(fid, 'param nodoPartenza := %s_0;\n', nodo_deposito);
 fprintf(fid, 'param nodoArrivo   := %s_%d;\n', nodo_deposito, T_MAX);
 fprintf(fid, 'param cap_batteria := %g;\n', CAP_BATTERIA);
@@ -220,10 +208,59 @@ fprintf(fid, '# n = %d clienti all''arresto -> floor(n/2) = %d\n', n, nMeta);
 fprintf(fid, 'param N_META := %d;\n', nMeta);
 fprintf(fid, 'param RIGA_NOTA := "%s";\n', rigaNota);
 fclose(fid);
-fprintf("Esperimenti pacchi e finestre con %d clienti: %s\n", nMeta, strjoin(ordine(1:nMeta), " "));
+fprintf("Esperimenti pacchi, finestre e apertura con %d clienti: %s\n", nMeta, strjoin(ordine(1:nMeta), " "));
 
-%% 7. ESPERIMENTI 2 E 3: PACCHI E FINESTRE
+%% 6b. PASSI DELL'ESPERIMENTO APERTURA -> aperture/rete_<k>.dat, scal_aperture.dat
+% Ogni passo allarga l'apertura comune di APERTURA_PASSO_ORE: prima si sposta
+% la chiusura fino a fine giornata, poi l'apertura fino a inizio giornata.
+passo    = APERTURA_PASSO_ORE * SLOT_ORA;
+aperture = zeros(0, 2);
+ap       = APERTURA_COMUNE;
+while ap(1) > 0 || ap(2) < T_MAX
+    if ap(2) < T_MAX
+        ap(2) = min(T_MAX, ap(2) + passo);
+    else
+        ap(1) = max(0, ap(1) - passo);
+    end
+    aperture(end+1, :) = ap; %#ok<SAGROW>
+end
+nAp = size(aperture, 1);
+
+fileRete = strings(nAp, 1);
+for k = 1:nAp
+    fileRete(k) = "analisi/scalabilita/aperture/rete_" + k + ".dat";   % relativo al progetto (per AMPL)
+    fid = fopen(fullfile(PROJECT_DIR, fileRete(k)), 'w');
+    assert(fid > 0, "Impossibile scrivere %s", fileRete(k));
+    fprintf(fid, '# Rete con apertura comune [%d %d] (passo %d)\n\n', aperture(k,1), aperture(k,2), k);
+    [nV, nA] = scriviRete(fid, nodi, archi, aperture(k,:), nodo_deposito, T_MAX);
+    fclose(fid);
+    fprintf("Apertura passo %2d: [%2d %2d] = %5.2f h -> %d nodi, %d archi\n", ...
+            k, aperture(k,1), aperture(k,2), diff(aperture(k,:)) / SLOT_ORA, nV, nA);
+end
+
+% riga gia' nota con le colonne dell'apertura di base
+rigaNotaAp = rigaNota + sprintf(" %d %d %g", APERTURA_COMUNE(1), APERTURA_COMUNE(2), ...
+                                diff(APERTURA_COMUNE) / SLOT_ORA);
+
+fid = fopen(AP_DAT, 'w');
+assert(fid > 0, "Impossibile scrivere %s", AP_DAT);
+fprintf(fid, '# Passi dell''esperimento apertura (lancia_scalabilita.m)\n');
+fprintf(fid, '# apertura di base [%d %d]: soluzione gia'' nota\n', APERTURA_COMUNE(1), APERTURA_COMUNE(2));
+fprintf(fid, 'param NAP := %d;\n', nAp);
+if nAp > 0
+    fprintf(fid, 'param AP_INIZIO :=\n'); fprintf(fid, '%s\n', compose("  %d %d", (1:nAp)', aperture(:,1))); fprintf(fid, ';\n');
+    fprintf(fid, 'param AP_FINE :=\n');   fprintf(fid, '%s\n', compose("  %d %d", (1:nAp)', aperture(:,2))); fprintf(fid, ';\n');
+    fprintf(fid, 'param AP_FILE :=\n');   fprintf(fid, '%s\n', compose("  %d ""%s""", (1:nAp)', fileRete));
+end
+fprintf(fid, 'param RIGA_NOTA_AP := "%s";\n', rigaNotaAp);
+fclose(fid);
+
+%% 7. ESPERIMENTI 2, 3 E 4: PACCHI, FINESTRE, APERTURA
 for k = 2:numel(ESPERIMENTI)
+    if ESPERIMENTI(k).nome == "apertura" && nAp == 0
+        esiti(k) = "saltato: APERTURA_COMUNE e' gia' tutta la giornata";
+        continue
+    end
     esiti(k) = eseguiRun(ampl, PROJECT_DIR, fullfile(DIR_SCAL, ESPERIMENTI(k).run), ...
                          fullfile(DIR_SCAL, ESPERIMENTI(k).out));
 end
@@ -243,7 +280,7 @@ for k = 1:numel(ESPERIMENTI)
 end
 
 if MOSTRA_GRAFICI
-    run(fullfile(PROJECT_DIR, 'grafici_scalabilita.m'));
+    run(fullfile(DIR_SCAL, 'grafici_scalabilita.m'));
 end
 
 %% =======================================================================
@@ -271,6 +308,49 @@ function esito = eseguiRun(ampl, cartella, fileRun, fileOut)
         warning("%s non completato:\n%s", fileRun, err.message);
     end
     fprintf("--> %s (%.0f s)\n", esito, toc);
+end
+
+function [nV, nA] = scriviRete(fid, nodi, archi, apertura, deposito, T_MAX)
+% Costruisce la rete spazio-tempo con lo stesso orario di apertura per tutti
+% i nodi tranne il deposito (aperto tutta la giornata) e ne scrive nodi, archi
+% e dati degli archi nel file gia' aperto fid (formato .dat di AMPL).
+    orari = repmat({apertura}, numel(nodi), 1);
+    orari{nodi == deposito} = [0 T_MAX];
+    V = NodiSpaceTime(nodi, dictionary(nodi, orari), T_MAX);
+    A = ArchiSpaceTime(V, archi, T_MAX);
+
+    nA     = numel(A);
+    nV     = numel(V);
+    da     = strings(nA, 1);  a     = strings(nA, 1);
+    nomeDa = strings(nA, 1);  nomeA = strings(nA, 1);
+    costo  = zeros(nA, 1);    energia = zeros(nA, 1);  tempo = zeros(nA, 1);
+    for i = 1:nA
+        da(i)     = A(i).da_nodo;             a(i)       = A(i).a_nodo;
+        nomeDa(i) = A(i).nome_nodo_partenza;  nomeA(i)   = A(i).nome_nodo_arrivo;
+        costo(i)  = double(A(i).costo);       energia(i) = double(A(i).energia);
+        tempo(i)  = double(A(i).tempoPercorrenza);
+    end
+    slotDa = str2double(extractAfter(da, ":"));
+    slotA  = str2double(extractAfter(a,  ":"));       % = tempoNodo, come in main.m
+    assert(all(tempo == slotA - slotDa), "tempoPercorrenza non coerente con gli slot.");
+
+    daA = amplNode(da, ":", "_");
+    aA  = amplNode(a,  ":", "_");
+
+    fprintf(fid, 'set V :=');   fprintf(fid, ' %s', amplNode(V, ":", "_"));   fprintf(fid, ';\n\n');
+    fprintf(fid, 'set A :=\n'); fprintf(fid, '  (%s, %s)\n', [daA aA]');      fprintf(fid, ';\n\n');
+    num = {'costo', costo; 'energia', energia; 'tempoPercorrenza', tempo; 'tempoNodo', slotA};
+    for p = 1:size(num, 1)
+        fprintf(fid, 'param %s :=\n', num{p,1});
+        fprintf(fid, '%s\n', compose("  %s %s %.15g", daA, aA, num{p,2}));
+        fprintf(fid, ';\n\n');
+    end
+    sym = {'nome_nodo_partenza', nomeDa; 'nome_nodo_arrivo', nomeA};
+    for p = 1:size(sym, 1)
+        fprintf(fid, 'param %s :=\n', sym{p,1});
+        fprintf(fid, '%s\n', compose("  %s %s %s", daA, aA, sym{p,2}));
+        fprintf(fid, ';\n\n');
+    end
 end
 
 function T = leggiOut(file)

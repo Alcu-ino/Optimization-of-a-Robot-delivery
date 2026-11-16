@@ -6,11 +6,11 @@
 # copiato; poi la finestra comune si allarga di 1 h a ogni passo (la
 # deadline avanza di SLOT_ORA slot, l'inizio TW_INIZIO resta fermo).
 # Arresto: gap a fine solve (600 s) >= GAP_STOP, nessuna soluzione, oppure
-# deadline oltre l'ultimo slot dell'orizzonte.
+# deadline oltre l'orario di chiusura dei clienti.
 #
 # Lanciato da lancia_scalabilita.m dopo l'esperimento clienti.
 # Ingresso: scal_base.dat, scal_param.dat, scal_meta.dat
-# Uscita  : analisi/out_scal_finestre.txt
+# Uscita  : analisi/scalabilita/out_scal_finestre.txt
 #           analisi/scalabilita/scenari/finestre_<ore>h.dat
 # ===========================================================================
 
@@ -74,8 +74,9 @@ printf "  %2d clienti x 1 pacchi | finestra %g h | soluzione riusata dall'esperi
 
 for {h in 1..100} {
     let ORE := TW_ORE_BASE + h;                        # +1 h a ogni passo
-    if TW_INIZIO + ORE * SLOT_ORA > max {v in V} slot[v] then {
-        print "   ARRESTO: la finestra supera l'orizzonte";
+    # la deadline non puo' superare la chiusura dei clienti (orario di apertura comune)
+    if TW_INIZIO + ORE * SLOT_ORA > max {v in V: base[v] != "O"} slot[v] then {
+        print "   ARRESTO: la finestra supera l'orario di chiusura dei clienti";
         break;
     }
     let fdat := DIR_SCEN & "finestre_" & ORE & "h.dat";

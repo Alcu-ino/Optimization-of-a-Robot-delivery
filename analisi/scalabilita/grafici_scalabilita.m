@@ -1,13 +1,15 @@
 %% =======================================================================
 %  GRAFICI_SCALABILITA — tempo di soluzione in funzione del parametro
-%  incrementato, per i tre esperimenti lanciati da lancia_scalabilita.m
+%  incrementato, per i quattro esperimenti lanciati da lancia_scalabilita.m
 %
 %    analisi/out_scal_clienti.txt   parametro: numero di clienti
 %    analisi/out_scal_pacchi.txt    parametro: pacchi per cliente
 %    analisi/out_scal_finestre.txt  parametro: larghezza della finestra [h]
+%    analisi/out_scal_apertura.txt  parametro: durata dell'orario di apertura [h]
 %
 %  Riga in alto: tempo di soluzione (scala log), con il limite di 600 s.
-%  Riga in basso: gap a fine solve, con la soglia di arresto.
+%  Riga in basso: gap a fine solve, con la soglia di arresto; per l'apertura
+%  anche il numero di variabili (asse destro), perche' li' cresce la rete.
 %  Marcatori: pieno = ottimo (entro il mipgap), vuoto = limite di tempo,
 %  croce rossa = nessuna soluzione, quadrato verde = soluzione riusata
 %  dall'esperimento clienti, cerchio rosso = passo di arresto.
@@ -23,10 +25,11 @@ ESP = {
     'clienti',  'n_clienti',          'Numero di clienti'
     'pacchi',   'pacchi_per_cliente', 'Pacchi per cliente'
     'finestre', 'tw_ore',             'Larghezza della finestra [h]'
+    'apertura', 'ap_ore',             'Orario di apertura dei clienti [h]'
 };
 BLU = [0.3 0.5 0.9];  ROSSO = [0.85 0.2 0.2];  VERDE = [0.2 0.6 0.2];
 
-figure('Name', 'Scalabilita''', 'Position', [100 100 1350 750]);
+figure('Name', 'Scalabilita''', 'Position', [60 100 1700 750]);
 tl = tiledlayout(2, size(ESP, 1), 'TileSpacing', 'compact', 'Padding', 'compact');
 title(tl, 'Robot delivery: scalabilita'' di Ampl\_Main.mod');
 
@@ -65,8 +68,10 @@ for k = 1:size(ESP, 1)
         title(axT, "Clienti (1 pacco, finestra " + T.tw_ore(1) + " h)");
     elseif k == 2
         title(axT, "Pacchi (" + T.n_clienti(1) + " clienti, finestra " + T.tw_ore(1) + " h)");
-    else
+    elseif k == 3
         title(axT, "Finestre (" + T.n_clienti(1) + " clienti, 1 pacco)");
+    else
+        title(axT, "Apertura (" + T.n_clienti(1) + " clienti, 1 pacco, finestra " + T.tw_ore(1) + " h)");
     end
     legend(axT, 'Location', 'northwest');
 
@@ -76,6 +81,12 @@ for k = 1:size(ESP, 1)
     yline(axG, 100 * GAP_STOP, '--', sprintf('arresto %g%%', 100 * GAP_STOP), 'Color', ROSSO);
     xlabel(axG, ESP{k,3});
     ylabel(axG, 'Gap a fine solve [%]');
+    if strcmp(ESP{k,1}, 'apertura')               % qui cresce la rete: si mostra anche la dimensione
+        yyaxis(axG, 'right');
+        plot(axG, x, T.nvars, '-s', 'LineWidth', 1.1);
+        ylabel(axG, 'Variabili del modello');
+        yyaxis(axG, 'left');
+    end
 
     fprintf('\n=== SCALABILITA'': %s ===\n', ESP{k,1});
     disp(T(:, {'n_clienti', 'pacchi_per_cliente', 'n_pacchi', 'tw_ore', 'stato', 'gap', ...

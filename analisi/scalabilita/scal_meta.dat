@@ -1,4 +1,4 @@
 # Passaggio dall'esperimento clienti (lancia_scalabilita.m)
-# n = 4 clienti all'arresto -> floor(n/2) = 2
-param N_META := 2;
-param RIGA_NOTA := "2 1 2 8 12 1 0 0 0 53.06 83920 131567 2 0 0 0.033289359 1215.97 1";
+# n = 15 clienti all'arresto -> floor(n/2) = 7
+param N_META := 7;
+param RIGA_NOTA := "7 1 7 8 12 1 0 0 0 33.16 64509 84491 7 0 20 0.11654048 1090.79 1";
