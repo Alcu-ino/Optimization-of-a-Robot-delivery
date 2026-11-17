@@ -1,6 +1,8 @@
 # Passi dell'esperimento apertura (lancia_scalabilita.m)
 # apertura di base [8 24]: soluzione gia' nota
 param NAP := 8;
+param AP_INIZIO_BASE := 8;
+param AP_FINE_BASE := 24;
 param AP_INIZIO :=
   1 8
   2 8
@@ -30,4 +32,4 @@ param AP_FILE :=
   6 "analisi/scalabilita/aperture/rete_6.dat"
   7 "analisi/scalabilita/aperture/rete_7.dat"
   8 "analisi/scalabilita/aperture/rete_8.dat"
-param RIGA_NOTA_AP := "7 1 7 8 12 1 0 0 0 33.16 64509 84491 7 0 20 0.11654048 1090.79 1 8 24 4";
+;

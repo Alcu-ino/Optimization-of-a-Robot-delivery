@@ -3,7 +3,7 @@
 #
 # Clienti: i primi N_META = floor(n/2) dell'ordine casuale, 1 pacco ciascuno,
 # finestra di consegna di base. Il primo passo (apertura comune APERTURA_COMUNE)
-# e' la soluzione gia' nota dell'esperimento clienti (RIGA_NOTA_AP) e viene solo
+# e' la soluzione gia' nota dell'esperimento clienti (RIGA_NOTA) e viene solo
 # copiato; poi l'orario di apertura, uguale per tutti i clienti, si allarga di
 # 1 h a ogni passo (prima la chiusura, poi l'apertura quando la chiusura arriva
 # a fine giornata).
@@ -43,15 +43,16 @@ data analisi/scalabilita/scal_param.dat;
 
 # --- soluzione gia' nota: floor(n/2) clienti (scal_meta.dat) ----------------
 param N_META integer > 0;
-param RIGA_NOTA symbolic;           # (qui si usa RIGA_NOTA_AP, con le colonne dell'apertura)
+param RIGA_NOTA symbolic;           # riga gia' risolta (colonne comuni, origine = 1)
 data analisi/scalabilita/scal_meta.dat;
 
 # --- passi dell'apertura (scal_aperture.dat) --------------------------------
 param NAP integer > 0;              # numero di passi
+param AP_INIZIO_BASE;               # apertura comune della soluzione nota (slot)
+param AP_FINE_BASE;                 # chiusura comune della soluzione nota (slot)
 param AP_INIZIO {1..NAP};           # apertura dei clienti al passo k (slot)
 param AP_FINE   {1..NAP};           # chiusura dei clienti al passo k (slot)
 param AP_FILE   {1..NAP} symbolic;  # file della rete al passo k
-param RIGA_NOTA_AP symbolic;        # riga nota + colonne ap_inizio ap_fine ap_ore
 data analisi/scalabilita/scal_aperture.dat;
 
 option solver cplex;
@@ -107,7 +108,8 @@ close (fdat);
 data (fdat);
 
 # --- primo passo: apertura comune di base, soluzione gia' nota ---------------
-printf "%s\n", RIGA_NOTA_AP > (fout);
+printf "%s %d %d %g\n", RIGA_NOTA, AP_INIZIO_BASE, AP_FINE_BASE,
+    (AP_FINE_BASE - AP_INIZIO_BASE) / SLOT_ORA > (fout);
 printf "  %2d clienti x 1 pacchi | apertura di base | soluzione riusata dall'esperimento clienti\n", N_META;
 
 for {k in 1..NAP} {
