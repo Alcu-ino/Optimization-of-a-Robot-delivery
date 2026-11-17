@@ -50,8 +50,8 @@ PENALE_DOMINANTE = 1;             % [M3] 1: ogni pacco non consegnato pesa w_pen
 
 SOGLIA_ENERGIA_TRATTA = 0.40;     % assunzione: max 40% di batteria per tratta
 
-CPLEX_TIMELIMIT = 600;            % [M5] secondi
-CPLEX_MIPGAP    = 0.01;           % [M5] gap relativo accettato
+CPLEX_TIMELIMIT = 1000;            % [M5] secondi
+CPLEX_MIPGAP    = 0.001;           % [M5] gap relativo accettato
 
 % [M4] cartella dello script (se eseguito a sezioni, ripiega su pwd)
 baseDir = fileparts(mfilename('fullpath'));

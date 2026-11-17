@@ -75,6 +75,11 @@ APERTURA_COMUNE = [8 24];  % orario di apertura (finestra rigida) uguale per tut
                            % base e lasciare spazio per allargarla (non [0 47]).
 APERTURA_PASSO_ORE = 1;    % allargamento dell'apertura a ogni passo [h]
 MOSTRA_GRAFICI  = true;    % al termine esegue grafici_scalabilita.m
+ESEGUI = [ "clienti" "pacchi" "finestre" "apertura"];     % esperimenti da (ri)eseguire: "clienti" "pacchi" "finestre" "apertura".
+                           % Quelli esclusi tengono il file out_scal_*.txt della corsa
+                           % precedente; pacchi, finestre e apertura leggono comunque
+                           % out_scal_clienti.txt, che deve esistere. Con lo stesso SEED
+                           % la rete di base e l'ordine dei clienti sono identici.
 
 % --- parametri del modello: gli stessi di main.m ---------------------------
 T_MAX            = 47;
@@ -110,10 +115,10 @@ end
 
 if ~isfolder(DIR_SCEN), mkdir(DIR_SCEN); end
 
-% via i risultati e i passaggi della corsa precedente, per non riusarli per errore
+% via i risultati da rifare e i passaggi della corsa precedente, per non riusarli per errore
 for e = ESPERIMENTI
     f = fullfile(DIR_SCAL, e.out);
-    if isfile(f), delete(f); end
+    if ismember(string(e.nome), ESEGUI) && isfile(f), delete(f); end
 end
 if isfile(META_DAT), delete(META_DAT); end
 if isfile(AP_DAT),   delete(AP_DAT);   end
@@ -170,9 +175,15 @@ ampl = com.ampl.AMPL(com.ampl.Environment(AMPL_HOME));
 chiudiAmpl = onCleanup(@() ampl.close());
 esiti = strings(1, numel(ESPERIMENTI));
 
-esiti(1) = eseguiRun(ampl, PROJECT_DIR, fullfile(DIR_SCAL, ESPERIMENTI(1).run), ...
-                     fullfile(DIR_SCAL, ESPERIMENTI(1).out));
-assert(esiti(1) == "ok", "Esperimento clienti non riuscito (%s): impossibile proseguire.", esiti(1));
+if ismember("clienti", ESEGUI)
+    esiti(1) = eseguiRun(ampl, PROJECT_DIR, fullfile(DIR_SCAL, ESPERIMENTI(1).run), ...
+                         fullfile(DIR_SCAL, ESPERIMENTI(1).out));
+    assert(esiti(1) == "ok", "Esperimento clienti non riuscito (%s): impossibile proseguire.", esiti(1));
+else
+    assert(isfile(fullfile(DIR_SCAL, ESPERIMENTI(1).out)), ...
+           "Esperimento clienti escluso ma %s non esiste.", ESPERIMENTI(1).out);
+    esiti(1) = "ok (file precedente)";
+end
 
 %% 6. CONTROLLO E PASSAGGIO DELLA SOLUZIONE NOTA -> scal_meta.dat
 fileOut1 = fullfile(DIR_SCAL, ESPERIMENTI(1).out);
@@ -238,25 +249,30 @@ for k = 1:nAp
             k, aperture(k,1), aperture(k,2), diff(aperture(k,:)) / SLOT_ORA, nV, nA);
 end
 
-% riga gia' nota con le colonne dell'apertura di base
-rigaNotaAp = rigaNota + sprintf(" %d %d %g", APERTURA_COMUNE(1), APERTURA_COMUNE(2), ...
-                                diff(APERTURA_COMUNE) / SLOT_ORA);
-
 fid = fopen(AP_DAT, 'w');
 assert(fid > 0, "Impossibile scrivere %s", AP_DAT);
 fprintf(fid, '# Passi dell''esperimento apertura (lancia_scalabilita.m)\n');
 fprintf(fid, '# apertura di base [%d %d]: soluzione gia'' nota\n', APERTURA_COMUNE(1), APERTURA_COMUNE(2));
 fprintf(fid, 'param NAP := %d;\n', nAp);
+fprintf(fid, 'param AP_INIZIO_BASE := %d;\n', APERTURA_COMUNE(1));   % apertura della soluzione nota
+fprintf(fid, 'param AP_FINE_BASE := %d;\n', APERTURA_COMUNE(2));
 if nAp > 0
     fprintf(fid, 'param AP_INIZIO :=\n'); fprintf(fid, '%s\n', compose("  %d %d", (1:nAp)', aperture(:,1))); fprintf(fid, ';\n');
     fprintf(fid, 'param AP_FINE :=\n');   fprintf(fid, '%s\n', compose("  %d %d", (1:nAp)', aperture(:,2))); fprintf(fid, ';\n');
-    fprintf(fid, 'param AP_FILE :=\n');   fprintf(fid, '%s\n', compose("  %d ""%s""", (1:nAp)', fileRete));
+    fprintf(fid, 'param AP_FILE :=\n');   fprintf(fid, '%s\n', compose("  %d ""%s""", (1:nAp)', fileRete)); fprintf(fid, ';\n');
 end
-fprintf(fid, 'param RIGA_NOTA_AP := "%s";\n', rigaNotaAp);
 fclose(fid);
 
 %% 7. ESPERIMENTI 2, 3 E 4: PACCHI, FINESTRE, APERTURA
 for k = 2:numel(ESPERIMENTI)
+    if ~ismember(string(ESPERIMENTI(k).nome), ESEGUI)
+        if isfile(fullfile(DIR_SCAL, ESPERIMENTI(k).out))
+            esiti(k) = "ok (file precedente)";
+        else
+            esiti(k) = "non eseguito";
+        end
+        continue
+    end
     if ESPERIMENTI(k).nome == "apertura" && nAp == 0
         esiti(k) = "saltato: APERTURA_COMUNE e' gia' tutta la giornata";
         continue
@@ -269,7 +285,7 @@ clear chiudiAmpl          % chiude AMPL
 %% 8. RIEPILOGO
 fprintf("\n=== RIEPILOGO SCALABILITA' ===\n");
 for k = 1:numel(ESPERIMENTI)
-    if esiti(k) ~= "ok"
+    if ~startsWith(esiti(k), "ok")
         fprintf("%-9s %s\n", ESPERIMENTI(k).nome, esiti(k));
         continue
     end

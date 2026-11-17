@@ -1,8 +1,3 @@
-#COMMENTA PRIMA DI ESEGUIRE IL FILE lancia_analisi.m / lancia_scalabilità.m
-
-param dir symbolic := "/home/vito/Scrivania/Optimization-of-a-Robot-delivery/";
-option solver cplex;
-option cplex_options 'timelimit=1000 threads=4 barcrossalg=-1 logfile=cplex_log.txt';
 
 # =======================================================
 # MODELLO ROBOT DELIVERY SU RETE SPAZIO-TEMPO (versione corretta)

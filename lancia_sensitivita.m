@@ -17,6 +17,10 @@
 
 %% 1. CONFIGURAZIONE
 PROJECT_DIR = fileparts(mfilename('fullpath'));
+DIR_ANALISI = fullfile(PROJECT_DIR, 'analisi');
+
+%DIR_SENS    = fullfile(DIR_ANALISI, 'sensitivita');
+
 if isempty(PROJECT_DIR), PROJECT_DIR = pwd; end     % esecuzione a sezioni
 addpath(fullfile(pwd, 'analisi'));
 addpath(fullfile(pwd, 'funzioni'));
@@ -38,7 +42,7 @@ ANALISI = {
     'analisi_pareto_pesi_energia_tempooperativo'
 };
 
-MOSTRA_GRAFICI = false;    % al termine esegue display_result.m
+MOSTRA_GRAFICI = true;    % al termine esegue display_result.m
 
 %% 2. CONTROLLI
 assert(isfolder(AMPL_HOME), "Cartella AMPL non trovata: %s", AMPL_HOME);
@@ -97,10 +101,10 @@ disp(riepilogo);
 
 %% 5. GRAFICI
 if MOSTRA_GRAFICI
-    fileGrafici = fullfile(PROJECT_DIR, 'display_result.m');
+    fileGrafici = fullfile(DIR_SENS, 'analisi.m');
     if isfile(fileGrafici)
         run(fileGrafici);
     else
-        warning("display_result.m non trovato in %s.", PROJECT_DIR);
+        warning("analisi.m non trovato in %s.", DIR_SENS);
     end
 end

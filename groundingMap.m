@@ -34,9 +34,9 @@ MINUTI_SLOT = 15;
 
 SEME_COSTI  = 42;          % seme del generatore casuale (riproducibilita')
 
-USA_ROBUSTO = false;       % true: cammini minimi robusti (ex stochasticGroundingMap)
-beta        = 0.6;         % deviazione massima relativa di ogni segmento
-Gamma       = 3;           % numero di segmenti che possono deviare insieme
+USA_ROBUSTO = true;       % true: cammini minimi robusti (ex stochasticGroundingMap)
+beta        = 2.0;         % deviazione massima relativa di ogni segmento
+Gamma       = 10;           % numero di segmenti che possono deviare insieme
 
 SOLO_HIGHWAY       = false; % usa solo le way con tag "highway"
 DIST_MAX_AGGANCIO  = 30;   % metri: oltre questa distanza avvisa
