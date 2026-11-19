@@ -82,7 +82,7 @@ param scala_costo   := nArchiMax * max {(i,j) in A} costo[i,j];
 param scala_energia := nArchiMax * max {(i,j) in A} (energia[i,j] + consumo_peso * cap_max_robot);
 param scala_tempo   := nArchiMax * max {(i,j) in A} tempoPercorrenza[i,j];
 param scala_tempo_op := max(1, nArchiMax - slot[nodoPartenza]);     # [C5] orizzonte
-param scala_ritardo := card(C) * max(1, scala_tempo - min {c in C} deadline[c]);
+param scala_ritardo := card(C) * max(1, 47 - min {c in C} deadline[c]);
 param penale_dominante binary default 1;                            # [C6]
 param scala_penale  :=
     if penale_dominante = 1 then max(1e-9, max {p in P} penale_mancata_consegna[p])
